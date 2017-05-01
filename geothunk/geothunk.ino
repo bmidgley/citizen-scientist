@@ -1,25 +1,57 @@
 #include <FS.h>
 
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#include <ESP8266WiFi.h>
 
 //needed for library
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+#include <WiFiManager.h>
+#include <PubSubClient.h>
 
-#include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
+#include <ArduinoJson.h>
 
 // arduino library manager to get wifimanager and arduinojson
 // sketch->include library->manage libraries
-// WiFiManager and ArduinoJson
+// WiFiManager, ArduinoJson, PubSubClient
 
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
+long lastMsg = 0;
+char msg[75];
 
 char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
 char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 uint8_t mac[6];
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+ Serial.print("Message arrived [");
+ Serial.print(topic);
+ Serial.print("] ");
+ for (int i=0;i<length;i++) {
+  char receivedChar = (char)payload[i];
+  Serial.print(receivedChar);
+ }
+ Serial.println();
+}
+
+void mqttReconnect() {
+ while (!client.connected()) {
+ Serial.print("Attempting MQTT connection...");
+ if (client.connect("ESP8266 Client")) {
+  Serial.println("connected");
+  client.subscribe("lightening");
+ } else {
+  Serial.print("failed, rc=");
+  Serial.print(client.state());
+  Serial.println(" try again in 5 seconds");
+  delay(5000);
+  }
+ }
+}
 
 void reset() {
   Serial.println("resetting...");
@@ -120,17 +152,30 @@ void setup() {
     json.printTo(Serial);
     json.printTo(configFile);
     configFile.close();
-    //end save
   }
+
+  client.setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
+  client.setCallback(mqttCallback);
 }
 
 void loop() {
-  int v1;
-
-  v1 = analogRead(0);
-  
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    Serial.println("trigger");
+    Serial.println("reconfiguring!");
     WiFi.disconnect(true);
+  }
+  
+  if (!client.connected()) {
+    mqttReconnect();
+  }
+  client.loop();
+
+  long now = millis();
+  if (now - lastMsg > 2000) {
+    lastMsg = now;
+    int value = analogRead(0);
+    snprintf (msg, 75, "%ld", value);
+    Serial.print("Publish message: ");
+    Serial.println(msg);
+    client.publish("lightTopic", msg);
   }
 }
