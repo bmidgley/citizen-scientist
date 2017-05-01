@@ -22,6 +22,7 @@ char msg[75];
 char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
 char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
+char uuid[64] = "";
 uint8_t mac[6];
 
 WiFiClient espClient;
@@ -41,7 +42,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void mqttReconnect() {
  while (!client.connected()) {
  Serial.print("Attempting MQTT connection...");
- if (client.connect("ESP8266 Client")) {
+ if (client.connect(uuid)) {
   Serial.println("connected");
   client.subscribe("lightening");
  } else {
@@ -66,7 +67,7 @@ void saveConfigCallback () {
 
 void setup() {
   WiFiManager wifiManager;
-
+  
   Serial.begin(115200);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
@@ -90,13 +91,11 @@ void setup() {
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/config.json")) {
-      //file exists, reading and loading
-      Serial.println("reading config file");
+      Serial.println("found /config.json");
       File configFile = SPIFFS.open("/config.json", "r");
       if (configFile) {
-        Serial.println("opened config file");
+        Serial.println("reading /config.json");
         size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
         std::unique_ptr<char[]> buf(new char[size]);
 
         configFile.readBytes(buf.get(), size);
@@ -109,6 +108,7 @@ void setup() {
           strcpy(mqtt_server, json["mqtt_server"]);
           strcpy(mqtt_port, json["mqtt_port"]);
           strcpy(blynk_token, json["blynk_token"]);
+          strcpy(uuid, json["uuid"]);
 
         } else {
           Serial.println("failed to load json config");
@@ -135,6 +135,8 @@ void setup() {
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(blynk_token, custom_blynk_token.getValue());
+  if(*uuid == 0)
+    snprintf(uuid, 64, "%02x%02x%02x%02x%02x%02x-%02x", (int)mac[5], (int)mac[4], (int)mac[3], (int)mac[2], (int)mac[1], (int)mac[0], random(255));
   
   if (shouldSaveConfig) {
     Serial.println("saving config");
@@ -143,6 +145,7 @@ void setup() {
     json["mqtt_server"] = mqtt_server;
     json["mqtt_port"] = mqtt_port;
     json["blynk_token"] = blynk_token;
+    json["uuid"] = uuid;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -150,6 +153,7 @@ void setup() {
     }
 
     json.printTo(Serial);
+    Serial.println("");
     json.printTo(configFile);
     configFile.close();
   }
@@ -160,14 +164,14 @@ void setup() {
 
 void loop() {
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    Serial.println("reconfiguring!");
+    Serial.println("disconnecting from wifi to reconfigure");
     WiFi.disconnect(true);
   }
   
   if (!client.connected()) {
-    mqttReconnect();
+    //mqttReconnect();
   }
-  client.loop();
+  //client.loop();
 
   long now = millis();
   if (now - lastMsg > 2000) {
@@ -176,6 +180,6 @@ void loop() {
     snprintf (msg, 75, "%ld", value);
     Serial.print("Publish message: ");
     Serial.println(msg);
-    client.publish("lightTopic", msg);
+    //client.publish("lightTopic", msg);
   }
 }
