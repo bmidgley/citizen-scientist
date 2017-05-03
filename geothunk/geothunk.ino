@@ -44,7 +44,7 @@ void mqttReconnect() {
  Serial.print("Attempting MQTT connection...");
  if (client.connect(uuid)) {
   Serial.println("connected");
-  client.subscribe("lightening");
+  //client.subscribe("lightening");
  } else {
   Serial.print("failed, rc=");
   Serial.print(client.state());
@@ -169,9 +169,9 @@ void loop() {
   }
   
   if (!client.connected()) {
-    //mqttReconnect();
+    mqttReconnect();
   }
-  //client.loop();
+  client.loop();
 
   long now = millis();
   if (now - lastMsg > 2000) {
@@ -180,6 +180,6 @@ void loop() {
     snprintf (msg, 75, "%ld", value);
     Serial.print("Publish message: ");
     Serial.println(msg);
-    //client.publish("lightTopic", msg);
+    client.publish("lightTopic", msg);
   }
 }
