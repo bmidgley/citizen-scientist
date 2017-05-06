@@ -17,13 +17,17 @@
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
 long lastMsg = 0;
-char msg[75];
+char msg[200];
 
 char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
 char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 char uuid[64] = "";
 uint8_t mac[6];
+
+unsigned int pm1 = 0;
+unsigned int pm2_5 = 0;
+unsigned int pm10 = 0;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -68,7 +72,7 @@ void saveConfigCallback () {
 void setup() {
   WiFiManager wifiManager;
   
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
   WiFi.printDiag(Serial);
@@ -163,23 +167,57 @@ void setup() {
 }
 
 void loop() {
-  if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    Serial.println("disconnecting from wifi to reconfigure");
-    WiFi.disconnect(true);
-  }
-  
-  if (!client.connected()) {
-    mqttReconnect();
-  }
-  client.loop();
+  int index = 0;
+  char value;
+  char previousValue;
 
   long now = millis();
-  if (now - lastMsg > 2000) {
-    lastMsg = now;
-    int value = analogRead(0);
-    snprintf (msg, 75, "%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
+  if (now - lastMsg < 2000) {
+    return;
+  }
+  lastMsg = now;
+  
+  if ( digitalRead(TRIGGER_PIN) == LOW ) {
+    Serial.println("disconnecting from wifi to reconfigure");
+    //WiFi.disconnect(true);
+  }
+
+  while (Serial.available()) {
+    value = Serial.read();
+    if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)){
+      Serial.println("Cannot find the data header.");
+      break;
+    }
+
+    if (index == 4 || index == 6 || index == 8 || index == 10 || index == 12 || index == 14) {
+      previousValue = value;
+    }
+    else if (index == 5) {
+      pm1 = 256 * previousValue + value;
+    }
+    else if (index == 7) {
+      pm2_5 = 256 * previousValue + value;
+    }
+    else if (index == 9) {
+      pm10 = 256 * previousValue + value;
+      snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u}", pm1, pm2_5, pm10);
+    } else if (index > 15) {
+      Serial.println(index);
+      break;
+    }
+    index++;
+  }
+  while(Serial.available()) {
+    Serial.read();
+    Serial.println("clearing buffer");
+  }
+  
+  if(msg[0]) {
+    if (!client.connected()) {
+      mqttReconnect();
+    }
+    //client.loop();
     client.publish("lightTopic", msg);
   }
+  msg[0] = 0;
 }
