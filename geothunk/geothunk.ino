@@ -185,7 +185,6 @@ void loop() {
   while (Serial.available()) {
     value = Serial.read();
     if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)){
-      Serial.println("Cannot find the data header.");
       break;
     }
 
@@ -202,14 +201,12 @@ void loop() {
       pm10 = 256 * previousValue + value;
       snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u}", pm1, pm2_5, pm10);
     } else if (index > 15) {
-      Serial.println(index);
       break;
     }
     index++;
   }
   while(Serial.available()) {
     Serial.read();
-    Serial.println("clearing buffer");
   }
   
   if(msg[0]) {
