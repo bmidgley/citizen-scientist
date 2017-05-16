@@ -58,12 +58,6 @@ void mqttReconnect() {
  }
 }
 
-void reset() {
-  Serial.println("resetting...");
-  ESP.reset();
-  delay(5000);
-}
-
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
@@ -179,7 +173,7 @@ void loop() {
   
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
     Serial.println("disconnecting from wifi to reconfigure");
-    //WiFi.disconnect(true);
+    WiFi.disconnect(true);
   }
 
   while (Serial.available()) {
