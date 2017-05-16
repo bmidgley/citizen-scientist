@@ -29,6 +29,19 @@ unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 
+int byteGPS=-1;
+char linea[300] = "";
+char comandoGPR[7] = "$GPRMC";
+int cont=0;
+int bien=0;
+int conta=0;
+int indices[13];
+int latw = 0;
+int latf = 0;
+int lngw = 0;
+int lngf = 0;
+
+WiFiClient tcpClient;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -158,12 +171,94 @@ void setup() {
 
   client.setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
   client.setCallback(mqttCallback);
+
+  for (int i=0;i<300;i++) {
+    linea[i]=' ';
+  }
+  tcpClient.connect(WiFi.gatewayIP(), 11000);
+}
+
+float to_degrees(char *begin, char *end, int &whole, int &decimal) {
+  char copied[20];
+  float result;
+  strncpy(copied, begin, 10);
+  copied[end-begin] = '\0';
+  float nmea = atof(copied);
+  int degrees = (int)(nmea / 100);
+  nmea -= 100 * degrees;
+  whole = degrees;
+  decimal = (int)(nmea * ( 10000.0 / 60.0));
+  result = degrees + nmea / 60.0;
+  Serial.print(result, 4);
+  return result;
+}
+
+int handle_gps_byte(int byteGPS) {
+  // note: there is a potential buffer overflow here!
+  linea[conta]=byteGPS;        // If there is serial port data, it is put in the buffer
+  conta++;
+  //Serial.write(byteGPS);
+  if (byteGPS==13){            // If the received byte is = to 13, end of transmission
+   // note: the actual end of transmission is <CR><LF> (i.e. 0x13 0x10)
+   cont=0;
+   bien=0;
+   // The following for loop starts at 1, because this code is clowny and the first byte is the <LF> (0x10) from the previous transmission.
+   for (int i=1;i<7;i++){     // Verifies if the received command starts with $GPR
+     if (linea[i]==comandoGPR[i-1]){
+       bien++;
+     }
+   }
+   if(bien==6){               // If yes, continue and process the data
+     for (int i=0;i<300;i++){
+       if (linea[i]==','){    // check for the position of the  "," separator
+         // note: again, there is a potential buffer overflow here!
+         indices[cont]=i;
+         cont++;
+       }
+       if (linea[i]=='*'){    // ... and the "*"
+         indices[12]=i;
+         cont++;
+       }
+     }
+     Serial.println("");      // ... and write to the serial port
+     Serial.println("");
+     Serial.println("---------------");
+     for (int i=0;i<12;i++){
+       switch(i){
+         case 0 :Serial.print("Time in UTC (HhMmSs): ");break;
+         case 1 :Serial.print("Status (A=OK,V=KO): ");break;
+         case 2 :Serial.print("Latitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf); break;
+         case 3 :Serial.print("Direction (N/S): ");break;
+         case 4 :Serial.print("Longitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf); break;
+         case 5 :Serial.print("Direction (E/W): ");break;
+         case 6 :Serial.print("Velocity in knots: ");break;
+         case 7 :Serial.print("Heading in degrees: ");break;
+         case 8 :Serial.print("Date UTC (DdMmAa): ");break;
+         case 9 :Serial.print("Magnetic degrees: ");break;
+         case 10 :Serial.print("(E/W): ");break;
+         case 11 :Serial.print("Mode: ");break;
+         case 12 :Serial.print("Checksum: ");break;
+       }
+       for (int j=indices[i];j<(indices[i+1]-1);j++){
+         Serial.print(linea[j+1]);
+       }
+       Serial.println("");
+     }
+     Serial.println("---------------");
+   }
+   conta=0;                    // Reset the buffer
+   for (int i=0;i<300;i++){    //
+     linea[i]=' ';
+   }
+  }
 }
 
 void loop() {
   int index = 0;
   char value;
   char previousValue;
+
+  if(tcpClient.available()) handle_gps_byte(tcpClient.read());
 
   long now = millis();
   if (now - lastMsg < 2000) {
@@ -173,7 +268,7 @@ void loop() {
   
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
     Serial.println("disconnecting from wifi to reconfigure");
-    WiFi.disconnect(true);
+    //WiFi.disconnect(true);
   }
 
   while (Serial.available()) {
@@ -193,7 +288,7 @@ void loop() {
     }
     else if (index == 9) {
       pm10 = 256 * previousValue + value;
-      snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u}", pm1, pm2_5, pm10);
+      snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %d.%d, \"lng\": %d.%d}", pm1, pm2_5, pm10, latw, latf, lngw, lngf);
     } else if (index > 15) {
       break;
     }
