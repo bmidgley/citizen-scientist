@@ -36,8 +36,10 @@ int cont=0;
 int bien=0;
 int conta=0;
 int indices[13];
+int lats = 1;
 int latw = 0;
 int latf = 0;
+int lngs = 1;
 int lngw = 0;
 int lngf = 0;
 
@@ -228,9 +230,9 @@ int handle_gps_byte(int byteGPS) {
          case 0 :Serial.print("Time in UTC (HhMmSs): ");break;
          case 1 :Serial.print("Status (A=OK,V=KO): ");break;
          case 2 :Serial.print("Latitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf); break;
-         case 3 :Serial.print("Direction (N/S): ");break;
+         case 3 :Serial.print("Direction (N/S): "); lats = linea[indices[i]+1] == 'N' ? 1 : -1; break;
          case 4 :Serial.print("Longitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf); break;
-         case 5 :Serial.print("Direction (E/W): ");break;
+         case 5 :Serial.print("Direction (E/W): "); lngs = linea[indices[i]+1] == 'E' ? 1 : -1; break;
          case 6 :Serial.print("Velocity in knots: ");break;
          case 7 :Serial.print("Heading in degrees: ");break;
          case 8 :Serial.print("Date UTC (DdMmAa): ");break;
@@ -288,7 +290,8 @@ void loop() {
     }
     else if (index == 9) {
       pm10 = 256 * previousValue + value;
-      snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %d.%d, \"lng\": %d.%d}", pm1, pm2_5, pm10, latw, latf, lngw, lngf);
+      snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d}",
+               pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf);
     } else if (index > 15) {
       break;
     }
