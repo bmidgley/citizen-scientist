@@ -120,11 +120,11 @@ void setup() {
         if (json.success()) {
           Serial.println("\nparsed json");
 
-          strcpy(mqtt_server, json["mqtt_server"]);
-          strcpy(mqtt_port, json["mqtt_port"]);
-          strcpy(blynk_token, json["blynk_token"]);
-          strcpy(uuid, json["uuid"]);
-          strcpy(gps_port, json["gps_port"]);
+          if(json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
+          if(json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
+          if(json["blynk_token"]) strcpy(blynk_token, json["blynk_token"]);
+          if(json["uuid"]) strcpy(uuid, json["uuid"]);
+          if(json["gps_port"]) strcpy(gps_port, json["gps_port"]);
 
         } else {
           Serial.println("failed to load json config");
