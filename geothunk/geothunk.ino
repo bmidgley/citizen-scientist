@@ -134,6 +134,8 @@ void setup() {
   } else {
     Serial.println("failed to mount FS");
   }
+
+  Serial.println("loaded config");
   
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
@@ -209,26 +211,22 @@ int handle_gps_byte(int byteGPS) {
   if (byteGPS==13 || conta >= 300){
    cont=0;
    bien=0;
-   // The following for loop starts at 1, because this code is clowny and the first byte is the <LF> (0x10) from the previous transmission.
-   for (int i=1;i<7;i++){     // Verifies if the received command starts with $GPR
+   for (int i=1;i<7;i++){
      if (linea[i]==comandoGPR[i-1]){
        bien++;
      }
    }
-   if(bien==6){               // If yes, continue and process the data
+   if(bien==6){
      for (int i=0;i<300;i++){
-       if (linea[i]==','){    // check for the position of the  "," separator
-         // note: again, there is a potential buffer overflow here!
+       if (linea[i]==',' && cont < 13){
          indices[cont]=i;
          cont++;
        }
-       if (linea[i]=='*'){    // ... and the "*"
+       if (linea[i]=='*'){
          indices[12]=i;
          cont++;
        }
      }
-     Serial.println("");
-     Serial.println("---------------");
      for (int i=0;i<12;i++){
        switch(i){
          case 0 :Serial.print("Time in UTC (HhMmSs): ");break;
