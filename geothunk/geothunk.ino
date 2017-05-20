@@ -202,12 +202,9 @@ float to_degrees(char *begin, char *end, int &whole, int &decimal) {
 }
 
 int handle_gps_byte(int byteGPS) {
-  // note: there is a potential buffer overflow here!
-  linea[conta]=byteGPS;        // If there is serial port data, it is put in the buffer
+  linea[conta]=byteGPS;
   conta++;
-  //Serial.write(byteGPS);
-  if (byteGPS==13){            // If the received byte is = to 13, end of transmission
-   // note: the actual end of transmission is <CR><LF> (i.e. 0x13 0x10)
+  if (byteGPS==13 || conta >= 300){
    cont=0;
    bien=0;
    // The following for loop starts at 1, because this code is clowny and the first byte is the <LF> (0x10) from the previous transmission.
@@ -228,7 +225,6 @@ int handle_gps_byte(int byteGPS) {
          cont++;
        }
      }
-     Serial.println("");      // ... and write to the serial port
      Serial.println("");
      Serial.println("---------------");
      for (int i=0;i<12;i++){
@@ -254,8 +250,8 @@ int handle_gps_byte(int byteGPS) {
      }
      Serial.println("---------------");
    }
-   conta=0;                    // Reset the buffer
-   for (int i=0;i<300;i++){    //
+   conta=0;
+   for (int i=0;i<300;i++){
      linea[i]=' ';
    }
   }
