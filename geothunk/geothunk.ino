@@ -23,6 +23,7 @@ char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
 char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 char uuid[64] = "";
+char gps_port[10] = "11000";
 uint8_t mac[6];
 
 unsigned int pm1 = 0;
@@ -122,6 +123,7 @@ void setup() {
           strcpy(mqtt_port, json["mqtt_port"]);
           strcpy(blynk_token, json["blynk_token"]);
           strcpy(uuid, json["uuid"]);
+          strcpy(gps_port, json["gps_port"]);
 
         } else {
           Serial.println("failed to load json config");
@@ -135,12 +137,14 @@ void setup() {
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_blynk_token("blynk", "blynk token", blynk_token, 32);
-  
+  WiFiManagerParameter custom_gps_port("gps_port", "GPS port (optional)", gps_port, 10);
+
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
   wifiManager.addParameter(&custom_blynk_token);
+  wifiManager.addParameter(&custom_gps_port);
   
   wifiManager.autoConnect("GeothunkAP");
   Serial.println("stored wifi connected");
@@ -148,6 +152,7 @@ void setup() {
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(blynk_token, custom_blynk_token.getValue());
+  strcpy(gps_port, custom_gps_port.getValue());
   if(*uuid == 0)
     snprintf(uuid, 64, "%02x%02x%02x%02x%02x%02x-%02x", (int)mac[5], (int)mac[4], (int)mac[3], (int)mac[2], (int)mac[1], (int)mac[0], random(255));
   
@@ -159,6 +164,7 @@ void setup() {
     json["mqtt_port"] = mqtt_port;
     json["blynk_token"] = blynk_token;
     json["uuid"] = uuid;
+    json["gps_port"] = gps_port;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -177,7 +183,7 @@ void setup() {
   for (int i=0;i<300;i++) {
     linea[i]=' ';
   }
-  tcpClient.connect(WiFi.gatewayIP(), 11000);
+  tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
 }
 
 float to_degrees(char *begin, char *end, int &whole, int &decimal) {
