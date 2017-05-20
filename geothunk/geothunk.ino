@@ -25,6 +25,7 @@ char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 char uuid[64] = "";
 char gps_port[10] = "11000";
 uint8_t mac[6];
+char topic_name[128];
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -184,6 +185,7 @@ void setup() {
     linea[i]=' ';
   }
   tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+  snprintf(topic_name, 128, "%s/particles");
 }
 
 float to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -303,12 +305,14 @@ void loop() {
     Serial.read();
   }
   
+  if(!tcpClient.connected()) tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+
   if(msg[0]) {
     if (!client.connected()) {
       mqttReconnect();
     }
-    //client.loop();
-    client.publish("lightTopic", msg);
+    client.publish(topic_name, msg);
+    msg[0] = 0;
+    client.loop();
   }
-  msg[0] = 0;
 }
