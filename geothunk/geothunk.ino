@@ -262,10 +262,10 @@ void loop() {
   char value;
   char previousValue;
 
-  if(tcpClient.available()) handle_gps_byte(tcpClient.read());
+  if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
 
   long now = millis();
-  if (now - lastMsg < 2000) {
+  if (now - lastMsg < 10000) {
     return;
   }
   lastMsg = now;
