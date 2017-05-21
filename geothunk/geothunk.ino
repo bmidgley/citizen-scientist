@@ -22,7 +22,6 @@ int reconfigure_counter = 0;
 
 char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
-char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 char uuid[64] = "";
 char gps_port[10] = "";
 uint8_t mac[6];
@@ -123,7 +122,6 @@ void setup() {
 
           if(json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
           if(json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
-          if(json["blynk_token"]) strcpy(blynk_token, json["blynk_token"]);
           if(json["uuid"]) strcpy(uuid, json["uuid"]);
           if(json["gps_port"]) strcpy(gps_port, json["gps_port"]);
 
@@ -140,14 +138,12 @@ void setup() {
   
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
-  WiFiManagerParameter custom_blynk_token("blynk", "blynk token", blynk_token, 32);
   WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
-  wifiManager.addParameter(&custom_blynk_token);
   wifiManager.addParameter(&custom_gps_port);
   
   wifiManager.autoConnect("GeothunkAP");
@@ -155,7 +151,6 @@ void setup() {
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
-  strcpy(blynk_token, custom_blynk_token.getValue());
   strcpy(gps_port, custom_gps_port.getValue());
   if(*uuid == 0)
     snprintf(uuid, 64, "%02x%02x%02x%02x%02x%02x-%02x", (int)mac[5], (int)mac[4], (int)mac[3], (int)mac[2], (int)mac[1], (int)mac[0], random(255));
@@ -166,7 +161,6 @@ void setup() {
     JsonObject& json = jsonBuffer.createObject();
     json["mqtt_server"] = mqtt_server;
     json["mqtt_port"] = mqtt_port;
-    json["blynk_token"] = blynk_token;
     json["uuid"] = uuid;
     json["gps_port"] = gps_port;
 
