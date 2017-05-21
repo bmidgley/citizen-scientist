@@ -191,18 +191,15 @@ void setup() {
   snprintf(topic_name, 128, "%s/particles");
 }
 
-float to_degrees(char *begin, char *end, int &whole, int &decimal) {
+void to_degrees(char *begin, char *end, int &whole, int &decimal) {
   char copied[20];
   float result;
   strncpy(copied, begin, 10);
   copied[end-begin] = '\0';
   float nmea = atof(copied);
-  int degrees = (int)(nmea / 100);
-  nmea -= 100 * degrees;
-  whole = degrees;
+  whole = (int)(nmea / 100);
+  nmea -= 100 * whole;
   decimal = (int)(nmea * ( 10000.0 / 60.0));
-  result = degrees + nmea / 60.0;
-  return result;
 }
 
 int handle_gps_byte(int byteGPS) {
