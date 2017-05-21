@@ -240,7 +240,7 @@ int handle_gps_byte(int byteGPS) {
            break;
        }
      }
-     Serial.println("gps message received");
+     Serial.print(".");
    }
    conta=0;
    for (int i=0;i<300;i++){
@@ -257,7 +257,7 @@ void loop() {
   if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
 
   long now = millis();
-  if (now - lastMsg < 4000) {
+  if (now - lastMsg < 5000) {
     return;
   }
   lastMsg = now;
@@ -307,6 +307,7 @@ void loop() {
       mqttReconnect();
     }
     client.publish(topic_name, msg);
+    Serial.println("");
     Serial.println(msg);
     msg[0] = 0;
     client.loop();
