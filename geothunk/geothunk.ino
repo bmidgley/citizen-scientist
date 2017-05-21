@@ -66,7 +66,7 @@ void mqttReconnect() {
  Serial.print("Attempting MQTT connection...");
  if (client.connect(uuid)) {
   Serial.println("connected");
-  //client.subscribe("lightening");
+  client.subscribe("clients");
  } else {
   Serial.print("failed, rc=");
   Serial.print(client.state());
@@ -202,7 +202,6 @@ float to_degrees(char *begin, char *end, int &whole, int &decimal) {
   whole = degrees;
   decimal = (int)(nmea * ( 10000.0 / 60.0));
   result = degrees + nmea / 60.0;
-  Serial.print(result, 4);
   return result;
 }
 
@@ -230,26 +229,21 @@ int handle_gps_byte(int byteGPS) {
      }
      for (int i=0;i<12;i++){
        switch(i){
-         case 0 :Serial.print("Time in UTC (HhMmSs): ");break;
-         case 1 :Serial.print("Status (A=OK,V=KO): ");break;
-         case 2 :Serial.print("Latitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf); break;
-         case 3 :Serial.print("Direction (N/S): "); lats = linea[indices[i]+1] == 'N' ? 1 : -1; break;
-         case 4 :Serial.print("Longitude: "); to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf); break;
-         case 5 :Serial.print("Direction (E/W): "); lngs = linea[indices[i]+1] == 'E' ? 1 : -1; break;
-         case 6 :Serial.print("Velocity in knots: ");break;
-         case 7 :Serial.print("Heading in degrees: ");break;
-         case 8 :Serial.print("Date UTC (DdMmAa): ");break;
-         case 9 :Serial.print("Magnetic degrees: ");break;
-         case 10 :Serial.print("(E/W): ");break;
-         case 11 :Serial.print("Mode: ");break;
-         case 12 :Serial.print("Checksum: ");break;
+         case 2:
+           to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf);
+           break;
+         case 3:
+           lats = linea[indices[i]+1] == 'N' ? 1 : -1;
+           break;
+         case 4:
+           to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf);
+           break;
+         case 5:
+           lngs = linea[indices[i]+1] == 'E' ? 1 : -1;
+           break;
        }
-       for (int j=indices[i];j<(indices[i+1]-1);j++){
-         Serial.print(linea[j+1]);
-       }
-       Serial.println("");
      }
-     Serial.println("---------------");
+     Serial.println("gps message received");
    }
    conta=0;
    for (int i=0;i<300;i++){
@@ -316,6 +310,7 @@ void loop() {
       mqttReconnect();
     }
     client.publish(topic_name, msg);
+    Serial.println(msg);
     msg[0] = 0;
     client.loop();
   }
