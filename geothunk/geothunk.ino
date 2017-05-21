@@ -18,6 +18,7 @@
 bool shouldSaveConfig = false;
 long lastMsg = 0;
 char msg[200];
+int reconfigure_counter = 0;
 
 char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
@@ -265,14 +266,19 @@ void loop() {
   if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
 
   long now = millis();
-  if (now - lastMsg < 10000) {
+  if (now - lastMsg < 4000) {
     return;
   }
   lastMsg = now;
   
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    Serial.println("disconnecting from wifi to reconfigure");
-    //WiFi.disconnect(true);
+    reconfigure_counter++;
+    if(reconfigure_counter > 2) {
+      Serial.println("disconnecting from wifi to reconfigure");
+      WiFi.disconnect(true);
+    }
+  } else {
+    reconfigure_counter = 0;
   }
 
   while (Serial.available()) {
