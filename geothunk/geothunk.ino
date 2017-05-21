@@ -24,7 +24,7 @@ char mqtt_server[40] = "flamebot.com";
 char mqtt_port[6] = "8080";
 char blynk_token[34] = "3e82307c0ad9495d900b4e5454a3e957";
 char uuid[64] = "";
-char gps_port[10] = "11000";
+char gps_port[10] = "";
 uint8_t mac[6];
 char topic_name[128];
 
@@ -141,7 +141,7 @@ void setup() {
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_blynk_token("blynk", "blynk token", blynk_token, 32);
-  WiFiManagerParameter custom_gps_port("gps_port", "GPS port (optional)", gps_port, 10);
+  WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
@@ -300,7 +300,7 @@ void loop() {
     Serial.read();
   }
   
-  if(!tcpClient.connected()) tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+  if(!tcpClient.connected() && atoi(gps_port) > 0) tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
 
   if(msg[0]) {
     if (!client.connected()) {
