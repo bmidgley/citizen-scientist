@@ -17,6 +17,7 @@
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
 long lastMsg = 0;
+long lastReading = 0;
 char msg[200];
 int reconfigure_counter = 0;
 
@@ -27,9 +28,9 @@ char gps_port[10] = "";
 uint8_t mac[6];
 char topic_name[128];
 
-unsigned int pm1 = 0;
-unsigned int pm2_5 = 0;
-unsigned int pm10 = 0;
+unsigned int pm1 = -1;
+unsigned int pm2_5 = -1;
+unsigned int pm10 = -1;
 
 int byteGPS=-1;
 char linea[300] = "";
@@ -283,8 +284,7 @@ void loop() {
     }
     else if (index == 9) {
       pm10 = 256 * previousValue + value;
-      snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d}",
-               pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf);
+      lastReading = millis();
     } else if (index > 15) {
       break;
     }
@@ -295,6 +295,9 @@ void loop() {
   }
   
   if(!tcpClient.connected() && atoi(gps_port) > 0) tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+
+  snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"timestamp\": %u}",
+    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading);
 
   if(msg[0]) {
     if (!client.connected()) {
