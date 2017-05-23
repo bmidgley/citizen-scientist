@@ -26,7 +26,8 @@ char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
 uint8_t mac[6];
-char topic_name[128];
+char particle_topic_name[128];
+char error_topic_name[128];
 
 unsigned int pm1 = -1;
 unsigned int pm2_5 = -1;
@@ -183,7 +184,8 @@ void setup() {
     linea[i]=' ';
   }
   tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
-  snprintf(topic_name, 128, "%s/particles");
+  snprintf(particle_topic_name, 128, "%s/particles", uuid);
+  snprintf(error_topic_name, 128, "%s/errors", uuid);
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -299,14 +301,20 @@ void loop() {
   snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"timestamp\": %u}",
     pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading);
 
-  if(msg[0]) {
-    if (!client.connected()) {
-      mqttReconnect();
-    }
-    client.publish(topic_name, msg);
-    Serial.println("");
-    Serial.println(msg);
-    msg[0] = 0;
-    client.loop();
+  if (!client.connected()) {
+    mqttReconnect();
   }
+
+  client.publish(particle_topic_name, msg);
+
+  Serial.println("");
+  Serial.println(msg);
+
+  if(lastMsg - lastReading > 60000) {
+    snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
+    client.publish(error_topic_name, msg);
+    Serial.println(msg);
+  }
+
+  client.loop();
 }
