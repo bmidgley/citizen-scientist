@@ -7,12 +7,15 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
+#include "SSD1306.h"
 
 #include <ArduinoJson.h>
+#include <ESP8266mDNS.h>
+#include <ArduinoOTA.h>
 
 // arduino library manager to get wifimanager and arduinojson
 // sketch->include library->manage libraries
-// WiFiManager, ArduinoJson, PubSubClient
+// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA
 
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
@@ -29,9 +32,9 @@ uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
 
-unsigned int pm1 = -1;
-unsigned int pm2_5 = -1;
-unsigned int pm10 = -1;
+unsigned int pm1 = 0;
+unsigned int pm2_5 = 0;
+unsigned int pm10 = 0;
 
 int byteGPS=-1;
 char linea[300] = "";
@@ -42,6 +45,9 @@ int conta=0;
 int indices[13];
 int lats = 1;
 int latw = 0;
+
+
+
 int latf = 0;
 int lngs = 1;
 int lngw = 0;
@@ -50,6 +56,7 @@ int lngf = 0;
 WiFiClient tcpClient;
 WiFiClient espClient;
 PubSubClient client(espClient);
+SSD1306 display(0x3c,5,4);
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
  Serial.print("Message arrived [");
@@ -89,6 +96,10 @@ void setup() {
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
   WiFi.printDiag(Serial);
+  
+  display.init();
+  display.setContrast(255);
+  display.clear();
   
   WiFi.macAddress(mac);
   
@@ -309,6 +320,12 @@ void loop() {
 
   Serial.println("");
   Serial.println(msg);
+
+  display.clear();
+  display.setFont(ArialMT_Plain_24);
+  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String(pm2_5));
+  display.display();
 
   if(lastMsg - lastReading > 60000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
