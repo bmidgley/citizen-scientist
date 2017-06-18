@@ -45,9 +45,6 @@ int conta=0;
 int indices[13];
 int lats = 1;
 int latw = 0;
-
-
-
 int latf = 0;
 int lngs = 1;
 int lngw = 0;
@@ -322,9 +319,14 @@ void loop() {
   Serial.println(msg);
 
   display.clear();
-  display.setFont(ArialMT_Plain_24);
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setFont(ArialMT_Plain_24);
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String(pm2_5));
+  display.setFont(ArialMT_Plain_10);
+  if(now < 100000)
+    display.drawString(DISPLAY_WIDTH/2, 10, uuid);
+  else
+    display.drawString(DISPLAY_WIDTH/2, 10, String(now));
   display.display();
 
   if(lastMsg - lastReading > 60000) {
