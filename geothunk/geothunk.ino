@@ -24,7 +24,7 @@ long lastReading = 0;
 char msg[200];
 int reconfigure_counter = 0;
 
-char mqtt_server[40] = "flamebot.com";
+char mqtt_server[40] = "mqtt.geothunk.com";
 char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
