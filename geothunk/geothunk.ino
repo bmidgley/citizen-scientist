@@ -8,6 +8,7 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include "SSD1306.h"
+#include "ESP8266TrueRandom.h"
 
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
@@ -16,6 +17,9 @@
 // arduino library manager to get wifimanager and arduinojson
 // sketch->include library->manage libraries
 // WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA
+// wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
+// unzip master.zip
+// mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
 
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
@@ -163,7 +167,7 @@ void setup() {
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(gps_port, custom_gps_port.getValue());
   if(*uuid == 0)
-    snprintf(uuid, 64, "%02x%02x%02x%02x%02x%02x-%02x", (int)mac[5], (int)mac[4], (int)mac[3], (int)mac[2], (int)mac[1], (int)mac[0], random(255));
+    ESP8266TrueRandom.uuidToString((uint8_t *)uuid);
   
   if (shouldSaveConfig) {
     Serial.println("saving config");
