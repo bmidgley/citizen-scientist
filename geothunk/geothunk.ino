@@ -1,5 +1,11 @@
 #include <FS.h>
 
+#include <Servo.h>
+
+Servo myservo;
+
+// kelly kenedy @ uofu
+
 #include <ESP8266WiFi.h>
 
 //needed for library
@@ -101,6 +107,8 @@ void setup() {
   display.init();
   display.setContrast(255);
   display.clear();
+
+  myservo.attach(16);
   
   WiFi.macAddress(mac);
   
@@ -262,6 +270,8 @@ void loop() {
   int index = 0;
   char value;
   char previousValue;
+  int pos;
+  int sdelay;
 
   if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
 
@@ -333,11 +343,26 @@ void loop() {
     display.drawString(DISPLAY_WIDTH/2, 10, String(now));
   display.display();
 
+  sdelay = 15 - pm2_5;
+  if(sdelay < 4) sdelay = 4;
+  
+  for (pos = 0; pos <= 90; pos += 1) { // goes from 0 degrees to 180 degrees
+    // in steps of 1 degree
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(sdelay);                       // waits 15ms for the servo to reach the position
+  }
+  for (pos = 90; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(sdelay);                       // waits 15ms for the servo to reach the position
+  }
+  
   if(lastMsg - lastReading > 60000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     client.publish(error_topic_name, msg);
     Serial.println(msg);
   }
+
+  
 
   client.loop();
 }
