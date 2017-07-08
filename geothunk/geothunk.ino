@@ -20,6 +20,8 @@
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
 // unzip master.zip
 // mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
+// or
+// mv ESP8266TrueRandom-master ~/Arduino/libraries/
 
 #define TRIGGER_PIN 0
 bool shouldSaveConfig = false;
