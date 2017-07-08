@@ -207,7 +207,7 @@ void setup() {
   snprintf(particle_topic_name, 128, "%s/particles", uuid);
   snprintf(error_topic_name, 128, "%s/errors", uuid);
 
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
