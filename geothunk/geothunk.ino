@@ -16,7 +16,7 @@
 
 // arduino library manager to get wifimanager and arduinojson
 // sketch->include library->manage libraries
-// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA
+// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
 // unzip master.zip
 // mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
