@@ -13,6 +13,7 @@
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
 #include <ArduinoOTA.h>
+#include <ESP8266httpUpdate.h>
 
 // arduino library manager to get wifimanager and arduinojson
 // sketch->include library->manage libraries
@@ -60,6 +61,10 @@ WiFiClient tcpClient;
 WiFiClient espClient;
 PubSubClient client(espClient);
 SSD1306 display(0x3c,5,4);
+
+t_httpUpdate_return update() {
+  return ESPhttpUpdate.update("updates.geothunk.com", 80, "/updates?geothunk", "1.0");
+}
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
  Serial.print("Message arrived [");
