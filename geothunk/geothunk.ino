@@ -150,6 +150,7 @@ void setup() {
     Serial.println("failed to mount FS");
   }
 
+  Serial.println("firmware 1.0");
   Serial.println("loaded config");
   
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
@@ -200,6 +201,19 @@ void setup() {
   tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
   snprintf(particle_topic_name, 128, "%s/particles", uuid);
   snprintf(error_topic_name, 128, "%s/errors", uuid);
+
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -266,6 +280,8 @@ void loop() {
   char previousValue;
 
   if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
+
+  ArduinoOTA.handle();
 
   long now = millis();
   if (now - lastMsg < 5000) {
