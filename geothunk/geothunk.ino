@@ -362,5 +362,8 @@ void loop() {
     Serial.println(msg);
   }
 
+  Serial.println("updating; code is ");
+  Serial.println(update());
+
   client.loop();
 }
