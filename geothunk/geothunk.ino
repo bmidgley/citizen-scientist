@@ -99,6 +99,7 @@ void saveConfigCallback () {
 
 void setup() {
   WiFiManager wifiManager;
+  byte uuidNumber[16];
   
   Serial.begin(9600);
   Serial.println("\n Starting");
@@ -174,8 +175,12 @@ void setup() {
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(gps_port, custom_gps_port.getValue());
-  if(*uuid == 0)
-    ESP8266TrueRandom.uuidToString((uint8_t *)uuid);
+  if(uuid == NULL || *uuid == 0) {
+    Serial.println("generating uuid");
+    ESP8266TrueRandom.uuid(uuidNumber);
+    ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
+    saveConfigCallback();
+  }
   
   if (shouldSaveConfig) {
     Serial.println("saving config");
@@ -207,8 +212,8 @@ void setup() {
   snprintf(particle_topic_name, 128, "%s/particles", uuid);
   snprintf(error_topic_name, 128, "%s/errors", uuid);
 
-  Serial.printf("publishing data on %s", particle_topic_name);
-  Serial.printf("publishing errors on %s", error_topic_name);
+  Serial.printf("publishing data on %s\n", particle_topic_name);
+  Serial.printf("publishing errors on %s\n", error_topic_name);
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
