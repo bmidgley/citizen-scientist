@@ -40,6 +40,7 @@ uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
 char *ap_name = "GeothunkAP";
+char *version = "1.1";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -167,7 +168,6 @@ void setup() {
     Serial.println("failed to mount FS");
   }
 
-  Serial.println("firmware 1.1");
   Serial.println("loaded config");
   
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
@@ -397,12 +397,13 @@ void loop() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String(pm2_5));
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String(pm2_5));
   display.setFont(ArialMT_Plain_10);
   if(now < 100000)
     display.drawString(DISPLAY_WIDTH/2, 10, uuid);
   else
     display.drawString(DISPLAY_WIDTH/2, 10, String(now));
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 + 10, String(version));
   display.display();
 
   if(lastMsg - lastReading > 60000) {
