@@ -403,7 +403,7 @@ void loop() {
     display.drawString(DISPLAY_WIDTH/2, 10, uuid);
   else
     display.drawString(DISPLAY_WIDTH/2, 10, String(now));
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 + 10, String(version));
+  display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
   display.display();
 
   if(lastMsg - lastReading > 60000) {
