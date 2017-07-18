@@ -35,9 +35,11 @@ char mqtt_server[40] = "mqtt.geothunk.com";
 char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
+char ota_password[10] = "";
 uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
+char *ap_name = "GeothunkAP";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -99,7 +101,9 @@ void saveConfigCallback () {
 
 void setup() {
   WiFiManager wifiManager;
+  bool create_ota_password = true;
   byte uuidNumber[16];
+  byte uuidCode[16];
   
   Serial.begin(9600);
   Serial.println("\n Starting");
@@ -125,6 +129,9 @@ void setup() {
   Serial.print(":");
   Serial.println(mac[0],HEX);
   
+  ESP8266TrueRandom.uuid(uuidCode);
+  ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
+
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/config.json")) {
@@ -146,6 +153,10 @@ void setup() {
           if(json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
           if(json["uuid"]) strcpy(uuid, json["uuid"]);
           if(json["gps_port"]) strcpy(gps_port, json["gps_port"]);
+          if(json["ota_password"]) {
+            strcpy(ota_password, json["ota_password"]);
+            create_ota_password = false;
+          }
 
         } else {
           Serial.println("failed to load json config");
@@ -156,20 +167,32 @@ void setup() {
     Serial.println("failed to mount FS");
   }
 
-  Serial.println("firmware 1.0");
+  Serial.println("firmware 1.1");
   Serial.println("loaded config");
   
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
+  WiFiManagerParameter custom_ota_password("ota_password", "OTA password (optional)", ota_password, 6);
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
   wifiManager.addParameter(&custom_gps_port);
+  if(create_ota_password) {
+    Serial.println("generating ota_password");
+    wifiManager.addParameter(&custom_ota_password);
+    saveConfigCallback();
+  }
+
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String(ap_name));
+  display.display();
   
-  wifiManager.autoConnect("GeothunkAP");
+  wifiManager.autoConnect(ap_name);
   Serial.println("stored wifi connected");
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
@@ -190,6 +213,7 @@ void setup() {
     json["mqtt_port"] = mqtt_port;
     json["uuid"] = uuid;
     json["gps_port"] = gps_port;
+    json["ota_password"] = ota_password;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -215,6 +239,9 @@ void setup() {
   Serial.printf("publishing data on %s\n", particle_topic_name);
   Serial.printf("publishing errors on %s\n", error_topic_name);
 
+  Serial.printf("ota_password is %s\n", ota_password);
+
+  ArduinoOTA.setPassword(ota_password);
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
@@ -303,11 +330,25 @@ void loop() {
   lastMsg = now;
   
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Hold to clear settings"));
+    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(reconfigure_counter));
+    display.display();
+
     reconfigure_counter++;
     if(reconfigure_counter > 2) {
       Serial.println("disconnecting from wifi to reconfigure");
       WiFi.disconnect(true);
+
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Release and tap reset"));
+      display.display();
     }
+    return;
   } else {
     reconfigure_counter = 0;
   }
@@ -370,8 +411,7 @@ void loop() {
     Serial.println(msg);
   }
 
-  Serial.println("updating; code is ");
-  Serial.println(update());
+  update();
 
   client.loop();
 }
