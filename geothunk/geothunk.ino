@@ -40,7 +40,7 @@ uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
-char *version = "1.1";
+char *version = "1.2";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
