@@ -188,12 +188,15 @@ void setup() {
 
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 14, String("Connect to this wifi"));
   display.setFont(ArialMT_Plain_16);
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String(ap_name));
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(ap_name));
   display.display();
   
   wifiManager.autoConnect(ap_name);
   Serial.println("stored wifi connected");
+  Serial.println(WiFi.SSID());
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
@@ -225,6 +228,15 @@ void setup() {
     json.printTo(configFile);
     configFile.close();
   }
+
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String("Connecting to Server"));
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
+  display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
+  display.display();
 
   client.setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
   client.setCallback(mqttCallback);
@@ -404,6 +416,7 @@ void loop() {
   else
     display.drawString(DISPLAY_WIDTH/2, 10, String(now));
   display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
+  display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
   display.display();
 
   if(lastMsg - lastReading > 60000) {
