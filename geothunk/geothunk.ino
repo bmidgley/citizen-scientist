@@ -60,9 +60,9 @@ int lngs = 1;
 int lngw = 0;
 int lngf = 0;
 
-WiFiClient tcpClient;
+WiFiClient *tcpClient;
 WiFiClient espClient;
-PubSubClient client(espClient);
+PubSubClient *client;
 SSD1306 display(0x3c,5,4);
 
 t_httpUpdate_return update() {
@@ -81,14 +81,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 void mqttReconnect() {
- while (!client.connected()) {
+ while (!client->connected()) {
  Serial.print("Attempting MQTT connection...");
- if (client.connect(uuid)) {
+ if (client->connect(uuid)) {
   Serial.println("connected");
-  client.subscribe("clients");
+  client->subscribe("clients");
  } else {
   Serial.print("failed, rc=");
-  Serial.print(client.state());
+  Serial.print(client->state());
   Serial.println(" try again in 5 seconds");
   delay(5000);
   }
@@ -244,13 +244,15 @@ void setup() {
   display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
   display.display();
 
-  client.setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
-  client.setCallback(mqttCallback);
+  client = new PubSubClient(espClient);
+  client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
+  client->setCallback(mqttCallback);
 
   for (int i=0;i<300;i++) {
     linea[i]=' ';
   }
-  tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+  tcpClient = new WiFiClient();
+  tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
   snprintf(particle_topic_name, 128, "%s/particles", uuid);
   snprintf(error_topic_name, 128, "%s/errors", uuid);
 
@@ -337,7 +339,7 @@ void loop() {
   char value;
   char previousValue;
 
-  if(tcpClient.connected() && tcpClient.available()) handle_gps_byte(tcpClient.read());
+  if(tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
 
   ArduinoOTA.handle();
 
@@ -398,16 +400,16 @@ void loop() {
     Serial.read();
   }
   
-  if(!tcpClient.connected() && atoi(gps_port) > 0) tcpClient.connect(WiFi.gatewayIP(), atoi(gps_port));
+  if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
   snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"timestamp\": %u}",
     pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading);
 
-  if (!client.connected()) {
+  if (!client->connected()) {
     mqttReconnect();
   }
 
-  client.publish(particle_topic_name, msg);
+  client->publish(particle_topic_name, msg);
 
   Serial.println("");
   Serial.println(msg);
@@ -427,11 +429,11 @@ void loop() {
 
   if(lastMsg - lastReading > 60000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
-    client.publish(error_topic_name, msg);
+    client->publish(error_topic_name, msg);
     Serial.println(msg);
   }
 
   update();
 
-  client.loop();
+  client->loop();
 }
