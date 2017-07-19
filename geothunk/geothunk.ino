@@ -189,6 +189,12 @@ void setup() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_10);
+  if(WiFi.SSID() && WiFi.SSID() != "") {
+    String status("Connecting to ");
+    status.concat(WiFi.SSID());
+    status.concat(" or...");
+    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 24, status);
+  }
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 14, String("Connect to this wifi"));
   display.setFont(ArialMT_Plain_16);
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(ap_name));
@@ -346,7 +352,7 @@ void loop() {
     display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
     display.setFont(ArialMT_Plain_10);
     display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Hold to clear settings"));
-    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(reconfigure_counter));
+    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(3-reconfigure_counter));
     display.display();
 
     reconfigure_counter++;
