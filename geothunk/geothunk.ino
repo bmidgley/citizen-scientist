@@ -39,7 +39,7 @@ char ota_password[10] = "";
 uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
-char *ap_name = "GeothunkAP";
+char ap_name[64];
 char *version = "1.1";
 
 unsigned int pm1 = 0;
@@ -61,7 +61,6 @@ int lngw = 0;
 int lngf = 0;
 
 WiFiClient *tcpClient;
-WiFiClient espClient;
 PubSubClient *client;
 SSD1306 display(0x3c,5,4);
 
@@ -186,6 +185,9 @@ void setup() {
     saveConfigCallback();
   }
 
+  snprintf(ap_name, 64, "Geothunk-%c%c%c", ESP8266TrueRandom.random(97,123), ESP8266TrueRandom.random(97,123), ESP8266TrueRandom.random(97,123));
+  Serial.printf("autoconnect with AP name %s\n", ap_name);
+
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_10);
@@ -202,7 +204,6 @@ void setup() {
   
   wifiManager.autoConnect(ap_name);
   Serial.println("stored wifi connected");
-  Serial.println(WiFi.SSID());
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
@@ -244,7 +245,7 @@ void setup() {
   display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
   display.display();
 
-  client = new PubSubClient(espClient);
+  client = new PubSubClient(*(new WiFiClient()));
   client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
   client->setCallback(mqttCallback);
 
