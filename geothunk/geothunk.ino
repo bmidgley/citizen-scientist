@@ -185,7 +185,7 @@ void setup() {
     saveConfigCallback();
   }
 
-  snprintf(ap_name, 64, "Geothunk-%c%c%c", ESP8266TrueRandom.random(97,123), ESP8266TrueRandom.random(97,123), ESP8266TrueRandom.random(97,123));
+  snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
   display.clear();
