@@ -1,21 +1,17 @@
 #include <FS.h>
-
 #include <ESP8266WiFi.h>
-
-//needed for library
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include "SSD1306.h"
 #include "ESP8266TrueRandom.h"
-
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
 #include <ArduinoOTA.h>
 #include <ESP8266httpUpdate.h>
 
-// arduino library manager to get wifimanager and arduinojson
+// use arduino library manager to get libraries
 // sketch->include library->manage libraries
 // WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
