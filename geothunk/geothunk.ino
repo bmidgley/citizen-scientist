@@ -416,10 +416,10 @@ void loop() {
   display.setFont(ArialMT_Plain_24);
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String(pm2_5));
   display.setFont(ArialMT_Plain_10);
-  if(now < 100000)
-    display.drawString(DISPLAY_WIDTH/2, 10, uuid);
+  if(now < 24 * 60 * 60 * 1000)
+    display.drawString(DISPLAY_WIDTH/2, 10, String(now / (60 * 60 * 1000)) + String("h"));
   else
-    display.drawString(DISPLAY_WIDTH/2, 10, String(now));
+    display.drawString(DISPLAY_WIDTH/2, 10, String(now / (24 * 60 * 60 * 1000)) + String("d"));
   display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
   display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
   display.display();
