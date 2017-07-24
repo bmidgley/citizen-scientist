@@ -24,6 +24,7 @@
 bool shouldSaveConfig = false;
 long lastMsg = 0;
 long lastReading = 0;
+long lastSwap = 0;
 char msg[200];
 int reconfigure_counter = 0;
 
@@ -430,10 +431,16 @@ void loop() {
   display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
 
-  if(lastMsg - lastReading > 60000) {
+  if(lastMsg - lastReading > 30000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     client->publish(error_topic_name, msg);
     Serial.println(msg);
+    Serial.println("swapping from here");
+    if(now - lastSwap > 60000) {
+      Serial.swap();
+      lastSwap = now;
+    }
+    Serial.println("swapped to here");
   }
 
   update();
