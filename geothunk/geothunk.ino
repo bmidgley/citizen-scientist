@@ -32,7 +32,6 @@ char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
 char ota_password[10] = "";
-uint8_t mac[6];
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
@@ -61,7 +60,7 @@ PubSubClient *client;
 SSD1306 display(0x3c,5,4);
 
 t_httpUpdate_return update() {
-  return ESPhttpUpdate.update("updates.geothunk.com", 80, "/updates?geothunk", "1.0");
+  return ESPhttpUpdate.update("updates.geothunk.com", 80, "/updates/geothunk", version);
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -96,6 +95,7 @@ void saveConfigCallback () {
 }
 
 void setup() {
+  uint8_t mac[6];
   WiFiManager wifiManager;
   bool create_ota_password = true;
   byte uuidNumber[16];
@@ -237,8 +237,10 @@ void setup() {
   display.setFont(ArialMT_Plain_10);
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
-  display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
-  display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, DISPLAY_HEIGHT - 10, String(version));
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
 
   client = new PubSubClient(*(new WiFiClient()));
@@ -347,12 +349,14 @@ void loop() {
   lastMsg = now;
   
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Hold to clear settings"));
-    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(3-reconfigure_counter));
-    display.display();
+    if(reconfigure_counter > 0) {
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Hold to clear settings"));
+      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(3-reconfigure_counter));
+      display.display();
+    }
 
     reconfigure_counter++;
     if(reconfigure_counter > 2) {
@@ -412,16 +416,18 @@ void loop() {
   Serial.println(msg);
 
   display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String(pm2_5));
+  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
   if(now < 24 * 60 * 60 * 1000)
-    display.drawString(DISPLAY_WIDTH/2, 10, String(now / (60 * 60 * 1000)) + String("h"));
+    display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h"));
   else
-    display.drawString(DISPLAY_WIDTH/2, 10, String(now / (24 * 60 * 60 * 1000)) + String("d"));
-  display.drawString(10, DISPLAY_HEIGHT/2 + 10, String(version));
-  display.drawString(DISPLAY_WIDTH-20, DISPLAY_HEIGHT/2 + 10, String(WiFi.SSID()));
+    display.drawString(0, 0, String(now / (24 * 60 * 60 * 1000)) + String("d"));
+  display.drawString(0, DISPLAY_HEIGHT - 10, String(version));
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
 
   if(lastMsg - lastReading > 60000) {
