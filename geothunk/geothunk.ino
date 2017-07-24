@@ -435,12 +435,12 @@ void loop() {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     client->publish(error_topic_name, msg);
     Serial.println(msg);
-    Serial.println("swapping from here");
     if(now - lastSwap > 60000) {
+      Serial.println("swapping from here");
       Serial.swap();
+      Serial.println("swapped to here");
       lastSwap = now;
     }
-    Serial.println("swapped to here");
   }
 
   update();
