@@ -20,7 +20,9 @@
 // or
 // mv ESP8266TrueRandom-master ~/Arduino/libraries/
 
+#define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
+
 bool shouldSaveConfig = false;
 long lastMsg = 0;
 long lastReading = 0;
@@ -58,6 +60,7 @@ int lngf = 0;
 
 WiFiClient *tcpClient;
 PubSubClient *client;
+ESP8266WebServer *webServer;
 SSD1306 display(0x3c,5,4);
 
 t_httpUpdate_return update() {
@@ -274,6 +277,13 @@ void setup() {
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
   ArduinoOTA.begin();
+
+  MDNS.begin(MDNS_NAME);
+  MDNS.addService("http", "tcp", 80);
+  webServer = new ESP8266WebServer(80);
+  webServer->onNotFound([]() {
+    webServer->send(404, "text/plain", "File not found");
+  });
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
