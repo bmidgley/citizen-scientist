@@ -239,7 +239,7 @@ void setup() {
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, DISPLAY_HEIGHT - 10, String(version));
+  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
@@ -334,6 +334,23 @@ int handle_gps_byte(int byteGPS) {
   }
 }
 
+void paint_display(long now) {
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setFont(ArialMT_Plain_24);
+  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  if(now < 24 * 60 * 60 * 1000)
+    display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h ") + String(version));
+  else
+    display.drawString(0, 0, String(now / (24 * 60 * 60 * 1000)) + String("d ") + String(version));
+  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
+  display.display();
+}
+
 void loop() {
   int index = 0;
   char value;
@@ -416,20 +433,7 @@ void loop() {
   Serial.println("");
   Serial.println(msg);
 
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-  if(now < 24 * 60 * 60 * 1000)
-    display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h"));
-  else
-    display.drawString(0, 0, String(now / (24 * 60 * 60 * 1000)) + String("d"));
-  display.drawString(0, DISPLAY_HEIGHT - 10, String(version));
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
-  display.display();
+  paint_display(now);
 
   if(lastMsg - lastReading > 30000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
