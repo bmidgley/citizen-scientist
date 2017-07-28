@@ -99,7 +99,6 @@ void saveConfigCallback () {
 }
 
 void setup() {
-  uint8_t mac[6];
   WiFiManager wifiManager;
   bool create_ota_password = true;
   byte uuidNumber[16];
@@ -113,21 +112,6 @@ void setup() {
   display.init();
   display.setContrast(255);
   display.clear();
-  
-  WiFi.macAddress(mac);
-  
-  Serial.print("MAC: ");
-  Serial.print(mac[5],HEX);
-  Serial.print(":");
-  Serial.print(mac[4],HEX);
-  Serial.print(":");
-  Serial.print(mac[3],HEX);
-  Serial.print(":");
-  Serial.print(mac[2],HEX);
-  Serial.print(":");
-  Serial.print(mac[1],HEX);
-  Serial.print(":");
-  Serial.println(mac[0],HEX);
   
   ESP8266TrueRandom.uuid(uuidCode);
   ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
