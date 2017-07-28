@@ -10,6 +10,7 @@
 #include <ESP8266mDNS.h>
 #include <ArduinoOTA.h>
 #include <ESP8266httpUpdate.h>
+#include <WiFiClientSecure.h>
 #include <time.h>
 
 // use arduino library manager to get libraries
@@ -59,7 +60,7 @@ int lngs = 1;
 int lngw = 0;
 int lngf = 0;
 
-WiFiClient *tcpClient;
+WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
 SSD1306 display(0x3c,5,4);
@@ -239,7 +240,7 @@ void setup() {
   for (int i=0;i<300;i++) {
     linea[i]=' ';
   }
-  tcpClient = new WiFiClient();
+  tcpClient = new WiFiClientSecure();
   tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
   snprintf(particle_topic_name, 128, "%s/particles", uuid);
   snprintf(error_topic_name, 128, "%s/errors", uuid);
