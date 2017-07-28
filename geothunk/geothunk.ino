@@ -457,6 +457,7 @@ void loop() {
     Serial.println(msg);
     if(now - lastSwap > 60000) {
       Serial.println("swapping from here");
+      Serial.flush();
       Serial.swap();
       Serial.println("swapped to here");
       lastSwap = now;
