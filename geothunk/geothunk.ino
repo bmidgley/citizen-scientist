@@ -284,6 +284,7 @@ void setup() {
   webServer->onNotFound([]() {
     webServer->send(404, "text/plain", "File not found");
   });
+  webServer->begin();
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -361,14 +362,19 @@ void paint_display(long now) {
   display.display();
 }
 
+void handleGPS() {
+  if(tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
+}
+
 void loop() {
   int index = 0;
   char value;
   char previousValue;
 
-  if(tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
-
+  handleGPS();
   ArduinoOTA.handle();
+  webServer->handleClient();
+  client->loop();
 
   long now = millis();
   if (now - lastMsg < 5000) {
@@ -456,8 +462,4 @@ void loop() {
       lastSwap = now;
     }
   }
-
-  update();
-
-  client->loop();
 }
