@@ -10,6 +10,7 @@
 #include <ESP8266mDNS.h>
 #include <ArduinoOTA.h>
 #include <ESP8266httpUpdate.h>
+#include <time.h>
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
@@ -269,6 +270,8 @@ void setup() {
     webServer->send(404, "text/plain", "File not found");
   });
   webServer->begin();
+
+  configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -366,6 +369,9 @@ void loop() {
   }
   lastMsg = now;
   
+  time_t clocktime = time(nullptr);
+  Serial.println(ctime(&clocktime));
+
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
     if(reconfigure_counter > 0) {
       display.clear();
