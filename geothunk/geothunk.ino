@@ -12,6 +12,10 @@
 #include <ESP8266httpUpdate.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+#include <SimpleDHT.h>
+
+int pinDHT11 = 2;
+SimpleDHT11 dht11;
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
@@ -358,6 +362,9 @@ void loop() {
   int index = 0;
   char value;
   char previousValue;
+  byte temperature = 0;
+  byte humidity = 0;
+  int err = SimpleDHTErrSuccess;
 
   handleGPS();
   ArduinoOTA.handle();
@@ -428,8 +435,13 @@ void loop() {
   
   if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-  snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"timestamp\": %u}",
-    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading);
+  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+    Serial.print("Read DHT11 failed, err=");
+    Serial.println(err);
+  }
+
+  snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"temperature\": %d, \"humidity\": %d, \"timestamp\": %u}",
+    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, temperature, humidity, lastReading);
 
   if (!client->connected()) {
     mqttReconnect();
