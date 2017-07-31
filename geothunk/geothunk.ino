@@ -19,7 +19,7 @@ SimpleDHT11 dht11;
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
-// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, SimpleDHT, ss"ESP8266 and ESP32 Oled Driver for SSD1306 display"
+// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, SimpleDHT, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
 // unzip master.zip
 // mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
