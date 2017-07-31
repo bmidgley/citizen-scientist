@@ -445,8 +445,8 @@ void loop() {
     Serial.printf("Read DHT11 failed, err=%d", err);
   }
 
-  snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"temperature\": %d, \"humidity\": %d, \"timestamp\": %u}",
-    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, temperature, humidity, lastReading);
+  snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\":%s%d.%d, \"lng\":%s%d.%d, \"ts\":%u, \"t\":%d}",
+    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading, temperature);
 
   Serial.printf("%s %s\n", particle_topic_name, msg);
 
