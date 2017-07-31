@@ -19,7 +19,7 @@ SimpleDHT11 dht11;
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
-// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
+// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, SimpleDHT, ss"ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
 // unzip master.zip
 // mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
@@ -44,7 +44,7 @@ char ota_password[10] = "";
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
-char *version = "1.2";
+char *version = "1.3";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -337,13 +337,15 @@ int handle_gps_byte(int byteGPS) {
   }
 }
 
-void paint_display(long now) {
+void paint_display(long now, byte temperature, byte humidity) {
+  float f = 32 + temperature * 9.0 / 5.0;
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
   display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
+  display.drawString(DISPLAY_WIDTH, 24, String(f));
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
   if(now < 24 * 60 * 60 * 1000)
     display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h ") + String(version));
   else
@@ -433,31 +435,29 @@ void loop() {
     Serial.read();
   }
   
+  if (!client->connected()) {
+    mqttReconnect();
+  }
+
   if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
   if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-    Serial.print("Read DHT11 failed, err=");
-    Serial.println(err);
+    Serial.printf("Read DHT11 failed, err=%d", err);
   }
 
   snprintf(msg, 200, "{\"pm1\":%u, \"pm2_5\":%u, \"pm10\":%u, \"lat\": %s%d.%d, \"lng\": %s%d.%d, \"temperature\": %d, \"humidity\": %d, \"timestamp\": %u}",
     pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, temperature, humidity, lastReading);
 
-  if (!client->connected()) {
-    mqttReconnect();
-  }
+  Serial.printf("%s %s\n", particle_topic_name, msg);
+
+  paint_display(now, temperature, humidity);
 
   client->publish(particle_topic_name, msg);
-
-  Serial.println("");
-  Serial.println(msg);
-
-  paint_display(now);
 
   if(lastMsg - lastReading > 30000) {
     snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     client->publish(error_topic_name, msg);
-    Serial.println(msg);
+    Serial.printf("%s %s\n", error_topic_name, msg);
     if(now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
