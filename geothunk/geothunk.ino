@@ -86,19 +86,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
  Serial.println();
 }
 
-void mqttReconnect() {
- while (!client->connected()) {
- Serial.print("Attempting MQTT connection...");
- if (client->connect(uuid)) {
-  Serial.println("connected");
-  client->subscribe("clients");
- } else {
-  Serial.print("failed, rc=");
-  Serial.print(client->state());
-  Serial.println(" try again in 5 seconds");
-  delay(5000);
+int mqttConnect() {
+  if (!client->connected()) {
+    Serial.print("Attempting MQTT connection...");
+    if (client->connect(uuid)) {
+      Serial.println("connected");
+      client->subscribe("clients");
+      return 1;
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client->state());
+      return 0;
+    }
   }
- }
 }
 
 void saveConfigCallback () {
@@ -464,10 +464,9 @@ void loop() {
     }
   }
 
-  if (!client->connected()) {
-    mqttReconnect();
+  if (mqttConnect()) {
+    client->publish(particle_topic_name, msg);
+    if (*errorMsg)
+      client->publish(error_topic_name, errorMsg);
   }
-  client->publish(particle_topic_name, msg);
-  if (*errorMsg)
-    client->publish(error_topic_name, errorMsg);
 }
