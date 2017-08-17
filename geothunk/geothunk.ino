@@ -34,6 +34,7 @@ long lastMsg = 0;
 long lastReading = 0;
 long lastSwap = 0;
 char msg[200];
+char errorMsg[200];
 int reconfigure_counter = 0;
 
 char mqtt_server[40] = "mqtt.geothunk.com";
@@ -44,12 +45,13 @@ char ota_password[10] = "";
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
-char *version = "1.3";
+char *version = "1.4";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 
+int reportGap = 30;
 int byteGPS=-1;
 char linea[300] = "";
 char comandoGPR[7] = "$GPRMC";
@@ -345,6 +347,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
   display.setFont(ArialMT_Plain_10);
   display.drawString(DISPLAY_WIDTH, 24, String(f));
+  display.drawString(DISPLAY_WIDTH, 34, String(humidity));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if(now < 24 * 60 * 60 * 1000)
     display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h ") + String(version));
@@ -374,7 +377,7 @@ void loop() {
   client->loop();
 
   long now = millis();
-  if (now - lastMsg < 5000) {
+  if (now - lastMsg < reportGap * 1000) {
     return;
   }
   lastMsg = now;
@@ -434,10 +437,6 @@ void loop() {
   while(Serial.available()) {
     Serial.read();
   }
-  
-  if (!client->connected()) {
-    mqttReconnect();
-  }
 
   if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
@@ -445,19 +444,17 @@ void loop() {
     Serial.printf("Read DHT11 failed, err=%d", err);
   }
 
-  snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d}",
-    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading, temperature);
+  snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
+    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading, temperature, humidity);
 
   Serial.printf("%s %s\n", particle_topic_name, msg);
 
   paint_display(now, temperature, humidity);
 
-  client->publish(particle_topic_name, msg);
-
+  *errorMsg = 0;
   if(lastMsg - lastReading > 30000) {
-    snprintf(msg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
-    client->publish(error_topic_name, msg);
-    Serial.printf("%s %s\n", error_topic_name, msg);
+    snprintf(errorMsg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
+    Serial.printf("%s %s\n", error_topic_name, errorMsg);
     if(now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
@@ -466,4 +463,11 @@ void loop() {
       lastSwap = now;
     }
   }
+
+  if (!client->connected()) {
+    mqttReconnect();
+  }
+  client->publish(particle_topic_name, msg);
+  if (*errorMsg)
+    client->publish(error_topic_name, errorMsg);
 }
