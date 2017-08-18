@@ -76,28 +76,28 @@ t_httpUpdate_return update() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
- Serial.print("Message arrived [");
- Serial.print(topic);
- Serial.print("] ");
- for (int i=0;i<length;i++) {
-  char receivedChar = (char)payload[i];
-  Serial.print(receivedChar);
- }
- Serial.println();
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i=0;i<length;i++) {
+    char receivedChar = (char)payload[i];
+    Serial.print(receivedChar);
+  }
+  Serial.println();
 }
 
 int mqttConnect() {
-  if (!client->connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (client->connect(uuid)) {
-      Serial.println("connected");
-      client->subscribe("clients");
-      return 1;
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client->state());
-      return 0;
-    }
+  if (client->connected()) return 1;
+
+  Serial.print("Attempting MQTT connection...");
+  if (client->connect(uuid)) {
+    Serial.println("connected");
+    client->subscribe("clients");
+    return 1;
+  } else {
+    Serial.print("failed, rc=");
+    Serial.print(client->state());
+    return 0;
   }
 }
 
