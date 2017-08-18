@@ -45,7 +45,7 @@ char ota_password[10] = "";
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
-char *version = "1.4";
+char *version = "1.5";
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -70,6 +70,8 @@ WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
 SSD1306 display(0x3c,5,4);
+
+const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='text' name='uuid'><input type='submit' value='Update'></form>";
 
 t_httpUpdate_return update() {
   return ESPhttpUpdate.update("updates.geothunk.com", 80, "/updates/geothunk", version);
@@ -275,6 +277,17 @@ void setup() {
   webServer = new ESP8266WebServer(80);
   webServer->onNotFound([]() {
     webServer->send(404, "text/plain", "File not found");
+  });
+  webServer->on("/", HTTP_GET, [](){
+    webServer->sendHeader("Connection", "close");
+    webServer->sendHeader("Access-Control-Allow-Origin", "*");
+    webServer->send(200, "text/html", serverIndex);
+  });
+  webServer->on("/update", HTTP_POST, [](){
+    webServer->sendHeader("Connection", "close");
+    webServer->sendHeader("Access-Control-Allow-Origin", "*");
+    webServer->send(200, "text/plain", String(update()));
+    ESP.restart();
   });
   webServer->begin();
 
