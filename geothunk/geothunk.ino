@@ -21,6 +21,8 @@ SimpleDHT11 dht11;
 // sketch->include library->manage libraries
 // WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, SimpleDHT, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
+// sketch->include library->Add .zip Library
+// or... manually...
 // unzip master.zip
 // mv ESP8266TrueRandom-master ~/Documents/Arduino/libraries/
 // or
@@ -71,10 +73,10 @@ PubSubClient *client;
 ESP8266WebServer *webServer;
 SSD1306 display(0x3c,5,4);
 
-const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='text' name='uuid'><input type='submit' value='Update'></form>";
+const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form>";
 
 t_httpUpdate_return update() {
-  return ESPhttpUpdate.update("updates.geothunk.com", 80, "/updates/geothunk", version);
+  return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk.ino.bin");
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -98,7 +100,7 @@ int mqttConnect() {
     return 1;
   } else {
     Serial.print("failed, rc=");
-    Serial.print(client->state());
+    Serial.println(client->state());
     return 0;
   }
 }
@@ -287,7 +289,6 @@ void setup() {
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
     webServer->send(200, "text/plain", String(update()));
-    ESP.restart();
   });
   webServer->begin();
 
