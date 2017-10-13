@@ -108,7 +108,7 @@ int mqttConnect() {
     Serial.print("failed, rc=");
     Serial.println(client->state());
     disconnects += 1;
-    if(disconnects > MAX_DISCONNECTS) ESP.reset();
+    if(disconnects > MAX_DISCONNECTS) ESP.restart();
     return 0;
   }
 }
@@ -206,12 +206,10 @@ void setup() {
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(ap_name));
   display.display();
 
-   wifiManager.setTimeout(600);
-   if(!wifiManager.autoConnect(ap_name)) {
+  wifiManager.setTimeout(120);
+  if(!wifiManager.autoConnect(ap_name)) {
     Serial.println("failed to connect and hit timeout");
-    delay(3000);
-    ESP.reset();
-    delay(5000);
+    ESP.restart();
   }
   Serial.println("stored wifi connected");
 
@@ -366,22 +364,35 @@ int handle_gps_byte(int byteGPS) {
   }
 }
 
+char *how_good(unsigned int v) {
+  if(v < 8) return "good";
+  if(v < 15) return "fair";
+  if(v < 30) return "bad";
+  if(v < 50) return "very bad";
+  return "dangerous";
+}
+
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
+  String uptime;
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5) + String("/") + String(pm1) + String("/") + String(pm10));
+  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5));
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 24, String(f));
-  display.drawString(DISPLAY_WIDTH, 34, String(humidity));
+  display.drawString(DISPLAY_WIDTH, 22, String(how_good(pm2_5)) + String(" pm2.5"));
+  display.drawString(DISPLAY_WIDTH, 34, String("pm1=") + String(pm1) + String(" pm10=") + String(pm10));
+  display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
+  display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if(now < 24 * 60 * 60 * 1000)
-    display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h ") + String(version));
+    uptime = String(now / (60 * 60 * 1000)) + String("h ");
   else
-    display.drawString(0, 0, String(now / (24 * 60 * 60 * 1000)) + String("d ") + String(version));
+    uptime = String(now / (24 * 60 * 60 * 1000)) + String("d ");
+  display.drawString(0, 34, uptime + String(version));
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
   display.display();
 }
 
@@ -410,6 +421,10 @@ void loop() {
   
   time_t clocktime = time(nullptr);
   Serial.println(ctime(&clocktime));
+
+  if(WiFi.status() != WL_CONNECTED) {
+    Serial.println("not connected");
+  }
 
   if ( digitalRead(TRIGGER_PIN) == LOW ) {
     if(reconfigure_counter > 0) {
