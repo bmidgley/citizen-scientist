@@ -30,6 +30,8 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
+#define MAX_DISCONNECTS 10
+#define VERSION "1.6"
 
 bool shouldSaveConfig = false;
 long lastMsg = 0;
@@ -38,6 +40,7 @@ long lastSwap = 0;
 char msg[200];
 char errorMsg[200];
 int reconfigure_counter = 0;
+int disconnects = 0;
 
 char mqtt_server[40] = "mqtt.geothunk.com";
 char mqtt_port[6] = "8080";
@@ -47,7 +50,7 @@ char ota_password[10] = "";
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
-char *version = "1.5";
+char *version = VERSION;
 
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
@@ -76,7 +79,7 @@ SSD1306 display(0x3c,5,4);
 const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form>";
 
 t_httpUpdate_return update() {
-  return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk.ino.bin");
+  return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk-" VERSION ".ino.bin");
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -91,7 +94,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 int mqttConnect() {
-  if (client->connected()) return 1;
+  if (client->connected()) {
+    disconnects = 0;
+    return 1;
+  }
 
   Serial.print("Attempting MQTT connection...");
   if (client->connect(uuid)) {
@@ -101,6 +107,8 @@ int mqttConnect() {
   } else {
     Serial.print("failed, rc=");
     Serial.println(client->state());
+    disconnects += 1;
+    if(disconnects > MAX_DISCONNECTS) ESP.reset();
     return 0;
   }
 }
@@ -197,8 +205,14 @@ void setup() {
   display.setFont(ArialMT_Plain_16);
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(ap_name));
   display.display();
-  
-  wifiManager.autoConnect(ap_name);
+
+   wifiManager.setTimeout(600);
+   if(!wifiManager.autoConnect(ap_name)) {
+    Serial.println("failed to connect and hit timeout");
+    delay(3000);
+    ESP.reset();
+    delay(5000);
+  }
   Serial.println("stored wifi connected");
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
@@ -238,9 +252,8 @@ void setup() {
   display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
 
   client = new PubSubClient(*(new WiFiClient()));
@@ -367,9 +380,8 @@ void paint_display(long now, byte temperature, byte humidity) {
     display.drawString(0, 0, String(now / (60 * 60 * 1000)) + String("h ") + String(version));
   else
     display.drawString(0, 0, String(now / (24 * 60 * 60 * 1000)) + String("d ") + String(version));
+  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT - 10, String(WiFi.SSID()));
   display.display();
 }
 
