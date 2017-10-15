@@ -32,6 +32,7 @@ SimpleDHT11 dht11;
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
 #define VERSION "1.6"
+#define POINTS 128
 
 bool shouldSaveConfig = false;
 long lastMsg = 0;
@@ -56,7 +57,7 @@ unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 
-int reportGap = 30;
+int reportGap = 2;
 int byteGPS=-1;
 char linea[300] = "";
 char comandoGPR[7] = "$GPRMC";
@@ -70,6 +71,8 @@ int latf = 0;
 int lngs = 1;
 int lngw = 0;
 int lngf = 0;
+unsigned short int graph[POINTS];
+int gindex = 0;
 
 WiFiClientSecure *tcpClient;
 PubSubClient *client;
@@ -191,6 +194,8 @@ void setup() {
 
   snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
+
+  for(gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = 0;
 
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
@@ -375,24 +380,36 @@ char *how_good(unsigned int v) {
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
+  int max = 0;
+
+  for(int i = 0; i < POINTS; i++) {
+    if(max < graph[i]) max = graph[i];
+  }
+  
   display.clear();
+  display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 0, String(pm2_5));
+  display.drawString(DISPLAY_WIDTH, 10, String(pm2_5));
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 22, String(how_good(pm2_5)) + String(" pm2.5"));
+  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(" pm2.5"));
   display.drawString(DISPLAY_WIDTH, 34, String("pm1=") + String(pm1) + String(" pm10=") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if(now < 24 * 60 * 60 * 1000)
-    uptime = String(now / (60 * 60 * 1000)) + String("h ");
+    uptime = String(now / (60 * 60 * 1000)) + String("h");
   else
-    uptime = String(now / (24 * 60 * 60 * 1000)) + String("d ");
-  display.drawString(0, 34, uptime + String(version));
+    uptime = String(now / (24 * 60 * 60 * 1000)) + String("d");
+  display.drawString(0, 34, uptime + String(" v") + String(version));
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
+  display.setColor(INVERSE);
+  if(max > 0) {
+    for(int i = 0; i < POINTS; i++)
+      display.drawLine(i, 34, i, 34 - (34 * graph[(i + gindex) % POINTS] / max));
+  }
   display.display();
 }
 
@@ -479,6 +496,11 @@ void loop() {
     Serial.read();
   }
 
+  if(lastReading > lastMsg) {
+    graph[gindex] = pm2_5;
+    gindex = (gindex + 1) % POINTS;
+  }
+
   if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
   if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
@@ -493,10 +515,10 @@ void loop() {
   paint_display(now, temperature, humidity);
 
   *errorMsg = 0;
-  if(lastMsg - lastReading > 30000) {
+  if(lastMsg - lastReading > 10000) {
     snprintf(errorMsg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     Serial.printf("%s %s\n", error_topic_name, errorMsg);
-    if(now - lastSwap > 60000) {
+    if(now - lastSwap > 20000) {
       Serial.println("swapping from here");
       Serial.flush();
       Serial.swap();
