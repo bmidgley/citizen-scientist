@@ -381,10 +381,6 @@ void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
   int max = 0;
-
-  for(int i = 0; i < POINTS; i++) {
-    if(max < graph[i]) max = graph[i];
-  }
   
   display.clear();
   display.setColor(WHITE);
@@ -406,6 +402,10 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
   display.setColor(INVERSE);
+
+  for(int i = 0; i < POINTS; i++) {
+    if(max < graph[i]) max = graph[i];
+  }
   if(max > 0) {
     for(int i = 0; i < POINTS; i++)
       display.drawLine(i, 34, i, 34 - (34 * graph[(i + gindex) % POINTS] / max));
@@ -487,6 +487,8 @@ void loop() {
     else if (index == 9) {
       pm10 = 256 * previousValue + value;
       lastReading = millis();
+      graph[gindex] = pm2_5;
+      gindex = (gindex + 1) % POINTS;
     } else if (index > 15) {
       break;
     }
@@ -496,10 +498,6 @@ void loop() {
     Serial.read();
   }
 
-  if(lastReading > lastMsg) {
-    graph[gindex] = pm2_5;
-    gindex = (gindex + 1) % POINTS;
-  }
 
   if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
@@ -515,10 +513,10 @@ void loop() {
   paint_display(now, temperature, humidity);
 
   *errorMsg = 0;
-  if(lastMsg - lastReading > 10000) {
+  if(lastMsg - lastReading > 30000) {
     snprintf(errorMsg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
     Serial.printf("%s %s\n", error_topic_name, errorMsg);
-    if(now - lastSwap > 20000) {
+    if(now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
       Serial.swap();
