@@ -1,5 +1,7 @@
 # citizen-scientist
 
+Monitor air quality and automatically share the collected data using inexpensive hardware.
+
 [OpenWest slides](goo.gl/4wqC1P) show how to build the project, including slide 20 with wiring explanation.
 
 Parts:
