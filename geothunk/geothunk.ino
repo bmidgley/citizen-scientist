@@ -413,11 +413,11 @@ char *how_good(unsigned int v) {
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
   int max = 0;
   
-  for (int i = 0; i < POINTS; i++) {
+  for (int i = 0; i < points; i++) {
     if (max < a[i]) max = a[i];
   }
   if (max > 0) {
-    for (int i = 0; i < POINTS; i++)
+    for (int i = 0; i < points; i++)
       display.drawLine(i, p0, i, p0 - ((p0-p1) * a[(i + idx) % points] / max));
   }
 }
@@ -425,7 +425,6 @@ void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
-  int max = 0;
 
   display.clear();
   display.setColor(WHITE);
@@ -447,14 +446,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
   display.setColor(INVERSE);
-
-  for (int i = 0; i < POINTS; i++) {
-    if (max < graph[i]) max = graph[i];
-  }
-  if (max > 0) {
-    for (int i = 0; i < POINTS; i++)
-      display.drawLine(i, 34, i, 34 - (34 * graph[(i + gindex) % POINTS] / max));
-  }
+  graph_set(graph, POINTS, 34, 0, gindex);
+  graph_set(graph2, POINTS, 34, 24, gindex);
   display.display();
 }
 
