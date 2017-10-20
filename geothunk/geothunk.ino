@@ -35,12 +35,12 @@ SimpleDHT11 dht11;
 #define POINTS 128
 
 bool shouldSaveConfig = false;
-long lastMsg = 0;
+long lastSample = 0;
+long lastReport = 0;
 long lastReading = 0;
 long lastSwap = 0;
 char msg[200];
 char errorMsg[200];
-int reconfigure_counter = 0;
 int disconnects = 0;
 
 char mqtt_server[40] = "mqtt.geothunk.com";
@@ -48,6 +48,7 @@ char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
 char ota_password[10] = "";
+
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
@@ -57,6 +58,7 @@ unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 
+int sampleGap = 2;
 int reportGap = 30;
 int byteGPS = -1;
 char linea[300] = "";
@@ -72,6 +74,7 @@ int lngs = 1;
 int lngw = 0;
 int lngf = 0;
 unsigned short int graph[POINTS];
+unsigned short int graph2[POINTS];
 int gindex = 0;
 
 WiFiClientSecure *tcpClient;
@@ -195,7 +198,7 @@ void setup() {
   snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
-  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = 0;
+  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
 
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
@@ -311,6 +314,36 @@ void setup() {
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 }
 
+void check_for_reconfigure() {
+  static int reconfigure_counter = 0;
+
+  if ( digitalRead(TRIGGER_PIN) == LOW ) {
+    if (reconfigure_counter > 0) {
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Hold to clear settings"));
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(3 - reconfigure_counter));
+      display.display();
+    }
+
+    reconfigure_counter++;
+    if (reconfigure_counter > 2) {
+      Serial.println("disconnecting from wifi to reconfigure");
+      WiFi.disconnect(true);
+
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Release and tap reset"));
+      display.display();
+    }
+    return;
+  } else {
+    reconfigure_counter = 0;
+  }
+}
+
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
   char copied[20];
   float result;
@@ -374,7 +407,19 @@ char *how_good(unsigned int v) {
   if (v < 15) return "fair";
   if (v < 30) return "bad";
   if (v < 50) return "very bad";
-  return "dangerous";
+  return "nope";
+}
+
+void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
+  int max = 0;
+  
+  for (int i = 0; i < POINTS; i++) {
+    if (max < a[i]) max = a[i];
+  }
+  if (max > 0) {
+    for (int i = 0; i < POINTS; i++)
+      display.drawLine(i, p0, i, p0 - ((p0-p1) * a[(i + idx) % points] / max));
+  }
 }
 
 void paint_display(long now, byte temperature, byte humidity) {
@@ -386,13 +431,13 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 10, String(pm2_5));
+  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(": ") + String(pm2_5));
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(" pm2.5"));
   display.drawString(DISPLAY_WIDTH, 34, String("pm1=") + String(pm1) + String(" pm10=") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 0, String(" pm2.5"));
   if (now < 24 * 60 * 60 * 1000)
     uptime = String(now / (60 * 60 * 1000)) + String("h");
   else
@@ -431,10 +476,10 @@ void loop() {
   client->loop();
 
   long now = millis();
-  if (now - lastMsg < reportGap * 1000) {
+  if (now - lastSample < sampleGap * 1000) {
     return;
   }
-  lastMsg = now;
+  lastSample = now;
 
   time_t clocktime = time(nullptr);
   Serial.println(ctime(&clocktime));
@@ -443,31 +488,12 @@ void loop() {
     Serial.println("not connected");
   }
 
-  if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    if (reconfigure_counter > 0) {
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Hold to clear settings"));
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(3 - reconfigure_counter));
-      display.display();
-    }
-
-    reconfigure_counter++;
-    if (reconfigure_counter > 2) {
-      Serial.println("disconnecting from wifi to reconfigure");
-      WiFi.disconnect(true);
-
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Release and tap reset"));
-      display.display();
-    }
-    return;
-  } else {
-    reconfigure_counter = 0;
+  check_for_reconfigure();
+  
+  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+    Serial.printf("Read DHT11 failed, err=%d", err);
   }
+  graph2[gindex] = temperature;
 
   while (Serial.available()) {
     value = Serial.read();
@@ -498,12 +524,7 @@ void loop() {
     Serial.read();
   }
 
-
   if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
-
-  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed, err=%d", err);
-  }
 
   snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
            pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
@@ -513,8 +534,8 @@ void loop() {
   paint_display(now, temperature, humidity);
 
   *errorMsg = 0;
-  if (lastMsg - lastReading > 30000) {
-    snprintf(errorMsg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
+  if (lastSample - lastReading > 30000) {
+    snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
     Serial.printf("%s %s\n", error_topic_name, errorMsg);
     if (now - lastSwap > 60000) {
       Serial.println("swapping from here");
@@ -525,7 +546,8 @@ void loop() {
     }
   }
 
-  if (mqttConnect()) {
+  if (now - lastReport < reportGap * 1000 && mqttConnect()) {
+    lastReport = now;
     client->publish(particle_topic_name, msg);
     if (*errorMsg)
       client->publish(error_topic_name, errorMsg);
