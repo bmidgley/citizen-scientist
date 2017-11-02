@@ -35,12 +35,12 @@ SimpleDHT11 dht11;
 #define POINTS 128
 
 bool shouldSaveConfig = false;
-long lastMsg = 0;
+long lastSample = 0;
+long lastReport = 0;
 long lastReading = 0;
 long lastSwap = 0;
 char msg[200];
 char errorMsg[200];
-int reconfigure_counter = 0;
 int disconnects = 0;
 
 char mqtt_server[40] = "mqtt.geothunk.com";
@@ -48,6 +48,7 @@ char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
 char ota_password[10] = "";
+
 char particle_topic_name[128];
 char error_topic_name[128];
 char ap_name[64];
@@ -57,13 +58,14 @@ unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 
+int sampleGap = 2;
 int reportGap = 30;
-int byteGPS=-1;
+int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[7] = "$GPRMC";
-int cont=0;
-int bien=0;
-int conta=0;
+int cont = 0;
+int bien = 0;
+int conta = 0;
 int indices[13];
 int lats = 1;
 int latw = 0;
@@ -72,12 +74,13 @@ int lngs = 1;
 int lngw = 0;
 int lngf = 0;
 unsigned short int graph[POINTS];
+unsigned short int graph2[POINTS];
 int gindex = 0;
 
 WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
-SSD1306 display(0x3c,5,4);
+SSD1306 display(0x3c, 5, 4);
 
 const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form>";
 
@@ -89,7 +92,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i=0;i<length;i++) {
+  for (int i = 0; i < length; i++) {
     char receivedChar = (char)payload[i];
     Serial.print(receivedChar);
   }
@@ -111,7 +114,7 @@ int mqttConnect() {
     Serial.print("failed, rc=");
     Serial.println(client->state());
     disconnects += 1;
-    if(disconnects > MAX_DISCONNECTS) ESP.restart();
+    if (disconnects > MAX_DISCONNECTS) ESP.restart();
     return 0;
   }
 }
@@ -126,16 +129,16 @@ void setup() {
   bool create_ota_password = true;
   byte uuidNumber[16];
   byte uuidCode[16];
-  
+
   Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
   WiFi.printDiag(Serial);
-  
+
   display.init();
   display.setContrast(255);
   display.clear();
-  
+
   ESP8266TrueRandom.uuid(uuidCode);
   ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
 
@@ -156,11 +159,11 @@ void setup() {
         if (json.success()) {
           Serial.println("\nparsed json");
 
-          if(json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
-          if(json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
-          if(json["uuid"]) strcpy(uuid, json["uuid"]);
-          if(json["gps_port"]) strcpy(gps_port, json["gps_port"]);
-          if(json["ota_password"]) {
+          if (json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
+          if (json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
+          if (json["uuid"]) strcpy(uuid, json["uuid"]);
+          if (json["gps_port"]) strcpy(gps_port, json["gps_port"]);
+          if (json["ota_password"]) {
             strcpy(ota_password, json["ota_password"]);
             create_ota_password = false;
           }
@@ -175,7 +178,7 @@ void setup() {
   }
 
   Serial.println("loaded config");
-  
+
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
   WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
@@ -186,7 +189,7 @@ void setup() {
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
   wifiManager.addParameter(&custom_gps_port);
-  if(create_ota_password) {
+  if (create_ota_password) {
     Serial.println("generating ota_password");
     wifiManager.addParameter(&custom_ota_password);
     saveConfigCallback();
@@ -195,24 +198,24 @@ void setup() {
   snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
-  for(gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = 0;
+  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
 
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_10);
-  if(WiFi.SSID() && WiFi.SSID() != "") {
+  if (WiFi.SSID() && WiFi.SSID() != "") {
     String status("Connecting to ");
     status.concat(WiFi.SSID());
     status.concat(" or...");
-    display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 24, status);
+    display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 24, status);
   }
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 14, String("Connect to this wifi"));
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 14, String("Connect to this wifi"));
   display.setFont(ArialMT_Plain_16);
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(ap_name));
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(ap_name));
   display.display();
 
   wifiManager.setTimeout(120);
-  if(!wifiManager.autoConnect(ap_name)) {
+  if (!wifiManager.autoConnect(ap_name)) {
     Serial.println("failed to connect and hit timeout");
     ESP.restart();
   }
@@ -221,13 +224,13 @@ void setup() {
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
   strcpy(gps_port, custom_gps_port.getValue());
-  if(uuid == NULL || *uuid == 0) {
+  if (uuid == NULL || *uuid == 0) {
     Serial.println("generating uuid");
     ESP8266TrueRandom.uuid(uuidNumber);
     ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
     saveConfigCallback();
   }
-  
+
   if (shouldSaveConfig) {
     Serial.println("saving config");
     DynamicJsonBuffer jsonBuffer;
@@ -252,7 +255,7 @@ void setup() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 5, String("Connecting to Server"));
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
@@ -263,8 +266,8 @@ void setup() {
   client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
   client->setCallback(mqttCallback);
 
-  for (int i=0;i<300;i++) {
-    linea[i]=' ';
+  for (int i = 0; i < 300; i++) {
+    linea[i] = ' ';
   }
   tcpClient = new WiFiClientSecure();
   tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
@@ -296,12 +299,12 @@ void setup() {
   webServer->onNotFound([]() {
     webServer->send(404, "text/plain", "File not found");
   });
-  webServer->on("/", HTTP_GET, [](){
+  webServer->on("/", HTTP_GET, []() {
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
     webServer->send(200, "text/html", serverIndex);
   });
-  webServer->on("/update", HTTP_POST, [](){
+  webServer->on("/update", HTTP_POST, []() {
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
     webServer->send(200, "text/plain", String(update()));
@@ -311,11 +314,41 @@ void setup() {
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 }
 
+void check_for_reconfigure() {
+  static int reconfigure_counter = 0;
+
+  if ( digitalRead(TRIGGER_PIN) == LOW ) {
+    if (reconfigure_counter > 0) {
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Hold to clear settings"));
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(3 - reconfigure_counter));
+      display.display();
+    }
+
+    reconfigure_counter++;
+    if (reconfigure_counter > 2) {
+      Serial.println("disconnecting from wifi to reconfigure");
+      WiFi.disconnect(true);
+
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Release and tap reset"));
+      display.display();
+    }
+    return;
+  } else {
+    reconfigure_counter = 0;
+  }
+}
+
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
   char copied[20];
   float result;
   strncpy(copied, begin, 10);
-  copied[end-begin] = '\0';
+  copied[end - begin] = '\0';
   float nmea = atof(copied);
   whole = (int)(nmea / 100);
   nmea -= 100 * whole;
@@ -323,77 +356,88 @@ void to_degrees(char *begin, char *end, int &whole, int &decimal) {
 }
 
 int handle_gps_byte(int byteGPS) {
-  linea[conta]=byteGPS;
+  linea[conta] = byteGPS;
   conta++;
-  if (byteGPS==13 || conta >= 300){
-   cont=0;
-   bien=0;
-   for (int i=1;i<7;i++){
-     if (linea[i]==comandoGPR[i-1]){
-       bien++;
-     }
-   }
-   if(bien==6){
-     for (int i=0;i<300;i++){
-       if (linea[i]==',' && cont < 13){
-         indices[cont]=i;
-         cont++;
-       }
-       if (linea[i]=='*'){
-         indices[12]=i;
-         cont++;
-       }
-     }
-     for (int i=0;i<12;i++){
-       switch(i){
-         case 2:
-           to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf);
-           break;
-         case 3:
-           lats = linea[indices[i]+1] == 'N' ? 1 : -1;
-           break;
-         case 4:
-           to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf);
-           break;
-         case 5:
-           lngs = linea[indices[i]+1] == 'E' ? 1 : -1;
-           break;
-       }
-     }
-     Serial.print(".");
-   }
-   conta=0;
-   for (int i=0;i<300;i++){
-     linea[i]=' ';
-   }
+  if (byteGPS == 13 || conta >= 300) {
+    cont = 0;
+    bien = 0;
+    for (int i = 1; i < 7; i++) {
+      if (linea[i] == comandoGPR[i - 1]) {
+        bien++;
+      }
+    }
+    if (bien == 6) {
+      for (int i = 0; i < 300; i++) {
+        if (linea[i] == ',' && cont < 13) {
+          indices[cont] = i;
+          cont++;
+        }
+        if (linea[i] == '*') {
+          indices[12] = i;
+          cont++;
+        }
+      }
+      for (int i = 0; i < 12; i++) {
+        switch (i) {
+          case 2:
+            to_degrees(linea + 1 + indices[i], linea + indices[i + 1], latw, latf);
+            break;
+          case 3:
+            lats = linea[indices[i] + 1] == 'N' ? 1 : -1;
+            break;
+          case 4:
+            to_degrees(linea + 1 + indices[i], linea + indices[i + 1], lngw, lngf);
+            break;
+          case 5:
+            lngs = linea[indices[i] + 1] == 'E' ? 1 : -1;
+            break;
+        }
+      }
+      Serial.print(".");
+    }
+    conta = 0;
+    for (int i = 0; i < 300; i++) {
+      linea[i] = ' ';
+    }
   }
 }
 
 char *how_good(unsigned int v) {
-  if(v < 8) return "good";
-  if(v < 15) return "fair";
-  if(v < 30) return "bad";
-  if(v < 50) return "very bad";
-  return "dangerous";
+  if (v < 8) return "good";
+  if (v < 15) return "fair";
+  if (v < 30) return "bad";
+  if (v < 50) return "very bad";
+  return "nope";
+}
+
+void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
+  int max = 0;
+  
+  for (int i = 0; i < points; i++) {
+    if (max < a[i]) max = a[i];
+  }
+  if (max > 0) {
+    for (int i = 0; i < points; i++)
+      display.drawLine(i, p0, i, p0 - ((p0-p1) * a[(i + idx) % points] / max));
+  }
 }
 
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
-  int max = 0;
-  
+
   display.clear();
   display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 10, String(pm2_5));
+  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(": ") + String(pm2_5));
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(" pm2.5"));
   display.drawString(DISPLAY_WIDTH, 34, String("pm1=") + String(pm1) + String(" pm10=") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  if(now < 24 * 60 * 60 * 1000)
+  display.drawString(0, 0, String(" pm2.5"));
+  if (now < 24 * 60 * 60 * 1000)
     uptime = String(now / (60 * 60 * 1000)) + String("h");
   else
     uptime = String(now / (24 * 60 * 60 * 1000)) + String("d");
@@ -402,19 +446,13 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
   display.setColor(INVERSE);
-
-  for(int i = 0; i < POINTS; i++) {
-    if(max < graph[i]) max = graph[i];
-  }
-  if(max > 0) {
-    for(int i = 0; i < POINTS; i++)
-      display.drawLine(i, 34, i, 34 - (34 * graph[(i + gindex) % POINTS] / max));
-  }
+  graph_set(graph, POINTS, 34, 0, gindex);
+  graph_set(graph2, POINTS, 34, 24, gindex);
   display.display();
 }
 
 void handleGPS() {
-  if(tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
+  if (tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
 }
 
 void loop() {
@@ -431,47 +469,28 @@ void loop() {
   client->loop();
 
   long now = millis();
-  if (now - lastMsg < reportGap * 1000) {
+  if (now - lastSample < sampleGap * 1000) {
     return;
   }
-  lastMsg = now;
-  
+  lastSample = now;
+
   time_t clocktime = time(nullptr);
   Serial.println(ctime(&clocktime));
 
-  if(WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("not connected");
   }
 
-  if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    if(reconfigure_counter > 0) {
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Hold to clear settings"));
-      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2, String(3-reconfigure_counter));
-      display.display();
-    }
-
-    reconfigure_counter++;
-    if(reconfigure_counter > 2) {
-      Serial.println("disconnecting from wifi to reconfigure");
-      WiFi.disconnect(true);
-
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 - 10, String("Release and tap reset"));
-      display.display();
-    }
-    return;
-  } else {
-    reconfigure_counter = 0;
+  check_for_reconfigure();
+  
+  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+    Serial.printf("Read DHT11 failed, err=%d", err);
   }
+  graph2[gindex] = temperature;
 
   while (Serial.available()) {
     value = Serial.read();
-    if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)){
+    if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)) {
       break;
     }
 
@@ -494,29 +513,24 @@ void loop() {
     }
     index++;
   }
-  while(Serial.available()) {
+  while (Serial.available()) {
     Serial.read();
   }
 
-
-  if(!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
-
-  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed, err=%d", err);
-  }
+  if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
   snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
-    pm1, pm2_5, pm10, lats > 0 ? "":"-", latw, latf, lngs > 0 ? "":"-", lngw, lngf, lastReading, temperature, humidity);
+           pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
 
   Serial.printf("%s %s\n", particle_topic_name, msg);
 
   paint_display(now, temperature, humidity);
 
   *errorMsg = 0;
-  if(lastMsg - lastReading > 30000) {
-    snprintf(errorMsg, 200, "{\"lastMsg\": %u, \"lastReading\": %u}", lastMsg, lastReading);
+  if (lastSample - lastReading > 30000) {
+    snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
     Serial.printf("%s %s\n", error_topic_name, errorMsg);
-    if(now - lastSwap > 60000) {
+    if (now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
       Serial.swap();
@@ -525,7 +539,8 @@ void loop() {
     }
   }
 
-  if (mqttConnect()) {
+  if (now - lastReport < reportGap * 1000 && mqttConnect()) {
+    lastReport = now;
     client->publish(particle_topic_name, msg);
     if (*errorMsg)
       client->publish(error_topic_name, errorMsg);
