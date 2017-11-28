@@ -405,11 +405,11 @@ int handle_gps_byte(int byteGPS) {
 }
 
 char *how_good(unsigned int v) {
-  if (v < 8) return "good";
-  if (v < 15) return "fair";
-  if (v < 30) return "bad";
-  if (v < 50) return "very bad";
-  return "nope";
+  if (v < 8) return "Good: pm2.5 is ";
+  if (v < 15) return "Fair: pm2.5 is ";
+  if (v < 30) return "Bad: pm2.5 is ";
+  if (v < 50) return "Very bad: pm2.5 is ";
+  return "Danger: pm2.5 is ";
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
@@ -431,7 +431,7 @@ int cycling(long now, int width) {
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
-  String status = String(how_good(pm2_5)) + String(": pm2.5 is ") + String(pm2_5) + String("µg/m³   ");
+  String status = String(how_good(pm2_5)) + String(pm2_5) + String("µg/m³ ");
   int location;
   int width;
 
