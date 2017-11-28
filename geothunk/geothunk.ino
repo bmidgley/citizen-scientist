@@ -445,7 +445,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(location + width, 0, status);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 34, String("pm1:") + String(pm1) + String(" pm10:") + String(pm10));
+  display.drawString(DISPLAY_WIDTH, 34, String("pm1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
