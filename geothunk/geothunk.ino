@@ -31,7 +31,7 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
-#define VERSION "1.7"
+#define VERSION "1.8"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -425,7 +425,7 @@ void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
 }
 
 int cycling(long now, int width) {
-  return -(now/32 % width);
+  return -(now/64 % width);
 }
 
 void paint_display(long now, byte temperature, byte humidity) {
@@ -456,10 +456,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, 34, uptime + String(" v") + String(version));
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
-  display.drawLine(0, 34, DISPLAY_WIDTH - 1, 34);
   display.setColor(INVERSE);
-  graph_set(graph, POINTS, 34, 0, gindex);
-  graph_set(graph2, POINTS, 34, 24, gindex);
+  graph_set(graph, POINTS, 36, 22, gindex);
   display.display();
 }
 
