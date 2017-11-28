@@ -31,7 +31,7 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
-#define VERSION "1.6"
+#define VERSION "1.7"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -57,6 +57,8 @@ char *version = VERSION;
 unsigned int pm1 = 0;
 unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
+byte temperature = 0;
+byte humidity = 0;
 
 int sampleGap = 2;
 int reportGap = 30;
@@ -403,11 +405,11 @@ int handle_gps_byte(int byteGPS) {
 }
 
 char *how_good(unsigned int v) {
-  if (v < 8) return "good";
-  if (v < 15) return "fair";
-  if (v < 30) return "bad";
-  if (v < 50) return "very bad";
-  return "nope";
+  if (v < 8) return "Good: pm2.5 is ";
+  if (v < 15) return "Fair: pm2.5 is ";
+  if (v < 30) return "Bad: pm2.5 is ";
+  if (v < 50) return "Very bad: pm2.5 is ";
+  return "Danger: pm2.5 is ";
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
@@ -422,21 +424,31 @@ void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
   }
 }
 
+int cycling(long now, int width) {
+  return -(now/32 % width);
+}
+
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
+  String status = String(how_good(pm2_5)) + String(pm2_5) + String("µg/m³ ");
+  int location;
+  int width;
 
   display.clear();
   display.setColor(WHITE);
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(DISPLAY_WIDTH, 0, String(how_good(pm2_5)) + String(": ") + String(pm2_5));
+  width = display.getStringWidth(status);
+  location = cycling(now, width);
+  display.drawString(location, 0, status);
+  display.drawString(location + width, 0, status);
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 34, String("pm1=") + String(pm1) + String(" pm10=") + String(pm10));
+  display.drawString(DISPLAY_WIDTH, 34, String("pm1:") + String(pm1) + String(" pm10:") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, 0, String(" pm2.5"));
   if (now < 24 * 60 * 60 * 1000)
     uptime = String(now / (60 * 60 * 1000)) + String("h");
   else
@@ -459,8 +471,6 @@ void loop() {
   int index = 0;
   char value;
   char previousValue;
-  byte temperature = 0;
-  byte humidity = 0;
   int err = SimpleDHTErrSuccess;
 
   handleGPS();
@@ -469,6 +479,8 @@ void loop() {
   client->loop();
 
   long now = millis();
+  paint_display(now, temperature, humidity);
+
   if (now - lastSample < sampleGap * 1000) {
     return;
   }
@@ -523,8 +535,6 @@ void loop() {
            pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
 
   Serial.printf("%s %s\n", particle_topic_name, msg);
-
-  paint_display(now, temperature, humidity);
 
   *errorMsg = 0;
   if (lastSample - lastReading > 30000) {
