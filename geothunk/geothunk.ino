@@ -424,34 +424,31 @@ void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
   }
 }
 
-int cycling(long now, int phase) {
-  double m;
-  double a = now/1000.0;
-
-  if(phase)
-    m = sin(a);
-  else
-    m = cos(a);
-
-  return (int)(20.0 * (m + 1.0));
+int cycling(long now, int width) {
+  return -(now/32 % width);
 }
 
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
+  String status = String(how_good(pm2_5)) + String(": pm2.5 is ") + String(pm2_5) + String("µg/m³   ");
+  int location;
+  int width;
 
   display.clear();
   display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_24);
-  display.drawString(cycling(now,0), 0, String(how_good(pm2_5)) + String(": ") + String(pm2_5));
+  width = display.getStringWidth(status);
+  location = cycling(now, width);
+  display.drawString(location, 0, status);
+  display.drawString(location + width, 0, status);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
   display.drawString(DISPLAY_WIDTH, 34, String("pm1:") + String(pm1) + String(" pm10:") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, 0, String(" pm2.5"));
   if (now < 24 * 60 * 60 * 1000)
     uptime = String(now / (60 * 60 * 1000)) + String("h");
   else
