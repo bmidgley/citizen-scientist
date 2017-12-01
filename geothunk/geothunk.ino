@@ -431,7 +431,7 @@ int cycling(long now, int width) {
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
-  String status = String(how_good(pm2_5)) + String(pm2_5) + String("µg/m³ ");
+  String status = String(how_good(pm2_5));
   int location;
   int width;
 
@@ -458,6 +458,17 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.setColor(INVERSE);
   graph_set(graph, POINTS, 36, 22, gindex);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_24);
+  width = display.getStringWidth(String(pm2_5));
+  display.setColor(BLACK);
+  display.fillRect(0, 0, width + 25, 32);
+  display.setColor(WHITE);
+  display.drawString(0, 4, String(pm2_5));
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(width, 0, String("µg"));
+  display.drawLine(width + 4, 18, width + 15, 18);
+  display.drawString(width, 17, String("m³"));
   display.display();
 }
 
