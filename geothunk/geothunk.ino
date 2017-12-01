@@ -496,7 +496,6 @@ void loop() {
   lastSample = now;
 
   time_t clocktime = time(nullptr);
-  Serial.println(ctime(&clocktime));
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("not connected");
@@ -543,12 +542,9 @@ void loop() {
   snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
            pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
 
-  Serial.printf("%s %s\n", particle_topic_name, msg);
-
   *errorMsg = 0;
   if (lastSample - lastReading > 30000) {
     snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
-    Serial.printf("%s %s\n", error_topic_name, errorMsg);
     if (now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
