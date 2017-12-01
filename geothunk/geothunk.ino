@@ -467,8 +467,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, 4, String(pm2_5));
   display.setFont(ArialMT_Plain_16);
   display.drawString(width, 0, String("µg"));
-  display.drawLine(width + 4, 18, width + 15, 18);
-  display.drawString(width, 17, String("m³"));
+  display.drawLine(width + 3, 18, width + 15, 18);
+  display.drawString(width + 2, 17, String("m³"));
   display.display();
 }
 
