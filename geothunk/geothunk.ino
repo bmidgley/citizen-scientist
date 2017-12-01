@@ -405,11 +405,11 @@ int handle_gps_byte(int byteGPS) {
 }
 
 char *how_good(unsigned int v) {
-  if (v < 8) return "Good: pm2.5 is ";
-  if (v < 15) return "Fair: pm2.5 is ";
-  if (v < 30) return "Bad: pm2.5 is ";
-  if (v < 50) return "Very bad: pm2.5 is ";
-  return "Danger: pm2.5 is ";
+  if (v < 8) return "Air quality is good. ";
+  if (v < 15) return "Air quality is fair. ";
+  if (v < 30) return "Air quality is bad. ";
+  if (v < 50) return "Air quality is very bad. ";
+  return "Air quality is dangerous. ";
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
