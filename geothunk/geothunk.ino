@@ -31,7 +31,7 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
-#define VERSION "1.8"
+#define VERSION "1.9"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -446,7 +446,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
   display.drawString(DISPLAY_WIDTH, 34, String("pm1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
-  display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("h"));
+  display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("%h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if (now < 24 * 60 * 60 * 1000)
@@ -462,7 +462,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setFont(ArialMT_Plain_24);
   width = display.getStringWidth(String(pm2_5));
   display.setColor(BLACK);
-  display.fillRect(0, 0, width + 25, 33);
+  display.fillRect(0, 0, width + 23, 33);
   display.setColor(WHITE);
   display.drawString(0, 4, String(pm2_5));
   display.setFont(ArialMT_Plain_16);
