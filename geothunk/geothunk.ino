@@ -64,7 +64,7 @@ int sampleGap = 2;
 int reportGap = 30;
 int byteGPS = -1;
 char linea[300] = "";
-char comandoGPR[7] = "$GPRMC";
+char comandoGPR[] = "$GPRMC";
 int cont = 0;
 int bien = 0;
 int conta = 0;
@@ -405,11 +405,11 @@ int handle_gps_byte(int byteGPS) {
 }
 
 char *how_good(unsigned int v) {
-  if (v < 8) return "Good: pm2.5 is ";
-  if (v < 15) return "Fair: pm2.5 is ";
-  if (v < 30) return "Bad: pm2.5 is ";
-  if (v < 50) return "Very bad: pm2.5 is ";
-  return "Danger: pm2.5 is ";
+  if (v < 8) return "Air quality is good. ";
+  if (v < 15) return "Air quality is fair. ";
+  if (v < 30) return "Air quality is bad. ";
+  if (v < 50) return "Air quality is very bad. ";
+  return "Air quality is dangerous. ";
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
@@ -431,7 +431,7 @@ int cycling(long now, int width) {
 void paint_display(long now, byte temperature, byte humidity) {
   float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
-  String status = String(how_good(pm2_5)) + String(pm2_5) + String("µg/m³ ");
+  String status = String(how_good(pm2_5));
   int location;
   int width;
 
@@ -458,6 +458,17 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
   display.setColor(INVERSE);
   graph_set(graph, POINTS, 36, 22, gindex);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_24);
+  width = display.getStringWidth(String(pm2_5));
+  display.setColor(BLACK);
+  display.fillRect(0, 0, width + 25, 33);
+  display.setColor(WHITE);
+  display.drawString(0, 4, String(pm2_5));
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(width, 0, String("µg"));
+  display.drawLine(width + 3, 18, width + 15, 18);
+  display.drawString(width + 2, 17, String("m³"));
   display.display();
 }
 
@@ -485,7 +496,6 @@ void loop() {
   lastSample = now;
 
   time_t clocktime = time(nullptr);
-  Serial.println(ctime(&clocktime));
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("not connected");
@@ -532,12 +542,9 @@ void loop() {
   snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
            pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
 
-  Serial.printf("%s %s\n", particle_topic_name, msg);
-
   *errorMsg = 0;
   if (lastSample - lastReading > 30000) {
     snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
-    Serial.printf("%s %s\n", error_topic_name, errorMsg);
     if (now - lastSwap > 60000) {
       Serial.println("swapping from here");
       Serial.flush();
