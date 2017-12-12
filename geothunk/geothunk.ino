@@ -31,7 +31,7 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
-#define VERSION "1.9"
+#define VERSION "1.10"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -205,15 +205,11 @@ void setup() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(ArialMT_Plain_10);
-  if (WiFi.SSID() && WiFi.SSID() != "") {
-    String status("Connecting to ");
-    status.concat(WiFi.SSID());
-    status.concat(" or...");
-    display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 24, status);
-  }
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 14, String("Connect to this wifi"));
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 24, "Connecting to...");
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 14, WiFi.SSID());
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 4, "...or connect to this wifi");
   display.setFont(ArialMT_Plain_16);
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(ap_name));
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT - 24, String(ap_name));
   display.display();
 
   wifiManager.setTimeout(120);
