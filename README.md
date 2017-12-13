@@ -2,7 +2,7 @@
 
 Monitor air quality and automatically share the collected data using inexpensive hardware.
 
-[OpenWest slides](goo.gl/4wqC1P) show how to build the project, including slide 20 with wiring explanation.
+[OpenWest slides](https://goo.gl/4wqC1P) show how to build the project, including slide 20 with wiring explanation.
 
 Parts:
 * Esp8266 [D-Duino](https://www.aliexpress.com/item/new-NODEMCU-wifi-NodeMCU-forArduino-ESP8266-wemos-for-OLED/32802190441.html)
