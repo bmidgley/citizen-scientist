@@ -60,7 +60,7 @@ unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
 
-int sampleGap = 2;
+int sampleGap = 10;
 int reportGap = 30;
 int byteGPS = -1;
 char linea[300] = "";
@@ -124,192 +124,6 @@ int mqttConnect() {
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
-}
-
-void setup() {
-  WiFiManager wifiManager;
-  bool create_ota_password = true;
-  byte uuidNumber[16];
-  byte uuidCode[16];
-
-  Serial.begin(9600);
-  Serial.println("\n Starting");
-  pinMode(TRIGGER_PIN, INPUT);
-  WiFi.printDiag(Serial);
-
-  display.init();
-  display.setContrast(255);
-  display.clear();
-
-  ESP8266TrueRandom.uuid(uuidCode);
-  ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
-
-  if (SPIFFS.begin()) {
-    Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
-      Serial.println("found /config.json");
-      File configFile = SPIFFS.open("/config.json", "r");
-      if (configFile) {
-        Serial.println("reading /config.json");
-        size_t size = configFile.size();
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        if (json.success()) {
-          Serial.println("\nparsed json");
-
-          if (json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
-          if (json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
-          if (json["uuid"]) strcpy(uuid, json["uuid"]);
-          if (json["gps_port"]) strcpy(gps_port, json["gps_port"]);
-          if (json["ota_password"]) {
-            strcpy(ota_password, json["ota_password"]);
-            create_ota_password = false;
-          }
-
-        } else {
-          Serial.println("failed to load json config");
-        }
-      }
-    }
-  } else {
-    Serial.println("failed to mount FS");
-  }
-
-  Serial.println("loaded config");
-
-  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
-  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
-  WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
-  WiFiManagerParameter custom_ota_password("ota_password", "OTA password (optional)", ota_password, 6);
-
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
-
-  wifiManager.addParameter(&custom_mqtt_server);
-  wifiManager.addParameter(&custom_mqtt_port);
-  wifiManager.addParameter(&custom_gps_port);
-  if (create_ota_password) {
-    Serial.println("generating ota_password");
-    wifiManager.addParameter(&custom_ota_password);
-    saveConfigCallback();
-  }
-
-  snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
-  Serial.printf("autoconnect with AP name %s\n", ap_name);
-
-  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
-
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 24, "Connecting to...");
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 14, WiFi.SSID());
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 4, "...or connect to this wifi");
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT - 24, String(ap_name));
-  display.display();
-
-  wifiManager.setTimeout(120);
-  if (!wifiManager.autoConnect(ap_name)) {
-    Serial.println("failed to connect and hit timeout");
-    ESP.restart();
-  }
-  Serial.println("stored wifi connected");
-
-  strcpy(mqtt_server, custom_mqtt_server.getValue());
-  strcpy(mqtt_port, custom_mqtt_port.getValue());
-  strcpy(gps_port, custom_gps_port.getValue());
-  if (uuid == NULL || *uuid == 0) {
-    Serial.println("generating uuid");
-    ESP8266TrueRandom.uuid(uuidNumber);
-    ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
-    saveConfigCallback();
-  }
-
-  if (shouldSaveConfig) {
-    Serial.println("saving config");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["mqtt_server"] = mqtt_server;
-    json["mqtt_port"] = mqtt_port;
-    json["uuid"] = uuid;
-    json["gps_port"] = gps_port;
-    json["ota_password"] = ota_password;
-
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      Serial.println("failed to open config file for writing");
-    }
-
-    json.printTo(Serial);
-    Serial.println("");
-    json.printTo(configFile);
-    configFile.close();
-  }
-
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
-  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
-  display.display();
-
-  client = new PubSubClient(*(new WiFiClient()));
-  client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
-  client->setCallback(mqttCallback);
-
-  for (int i = 0; i < 300; i++) {
-    linea[i] = ' ';
-  }
-  tcpClient = new WiFiClientSecure();
-  tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
-  snprintf(particle_topic_name, 128, "%s/particles", uuid);
-  snprintf(error_topic_name, 128, "%s/errors", uuid);
-
-  Serial.printf("publishing data on %s\n", particle_topic_name);
-  Serial.printf("publishing errors on %s\n", error_topic_name);
-
-  Serial.printf("ota_password is %s\n", ota_password);
-
-  ArduinoOTA.setPassword(ota_password);
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
-
-  MDNS.begin(MDNS_NAME);
-  MDNS.addService("http", "tcp", 80);
-  webServer = new ESP8266WebServer(80);
-  webServer->onNotFound([]() {
-    webServer->send(404, "text/plain", "File not found");
-  });
-  webServer->on("/", HTTP_GET, []() {
-    webServer->sendHeader("Connection", "close");
-    webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/html", serverIndex);
-  });
-  webServer->on("/update", HTTP_POST, []() {
-    webServer->sendHeader("Connection", "close");
-    webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/plain", String(update()));
-  });
-  webServer->begin();
-
-  configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 }
 
 void check_for_reconfigure() {
@@ -401,16 +215,17 @@ int handle_gps_byte(int byteGPS) {
 }
 
 char *how_good(unsigned int v) {
-  if (v < 8) return "Air quality is good. ";
-  if (v < 15) return "Air quality is fair. ";
-  if (v < 30) return "Air quality is bad. ";
-  if (v < 50) return "Air quality is very bad. ";
-  return "Air quality is dangerous. ";
+  if (v == 0) return "Air quality seems perfect ";
+  if (v < 8) return "Air quality is good ";
+  if (v < 15) return "Air quality is fair ";
+  if (v < 30) return "Air quality is bad ";
+  if (v < 50) return "Air quality is very bad ";
+  return "Air quality is dangerous ";
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
   int max = 0;
-  
+
   for (int i = 0; i < points; i++) {
     if (max < a[i]) max = a[i];
   }
@@ -435,13 +250,15 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_24);
-  width = display.getStringWidth(status);
-  location = cycling(now, width);
-  display.drawString(location, 0, status);
-  display.drawString(location + width, 0, status);
+  if (now > 0) {
+    width = display.getStringWidth(status);
+    location = cycling(now, width);
+    display.drawString(location, 0, status);
+    display.drawString(location + width, 0, status);
+  }
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 34, String("pm1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
+  display.drawString(DISPLAY_WIDTH, 34, String("1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("%h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -451,9 +268,13 @@ void paint_display(long now, byte temperature, byte humidity) {
     uptime = String(now / (24 * 60 * 60 * 1000)) + String("d");
   display.drawString(0, 34, uptime + String(" v") + String(version));
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
-  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  if (WiFi.status() == WL_CONNECTED) {
+    display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  } else {
+    display.drawString(0, DISPLAY_HEIGHT - 10, "No wifi connection");
+  }
   display.setColor(INVERSE);
-  graph_set(graph, POINTS, 36, 22, gindex);
+  graph_set(graph, POINTS, 36, 12, gindex);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_24);
   width = display.getStringWidth(String(pm2_5));
@@ -465,6 +286,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(width, 0, String("µg"));
   display.drawLine(width + 3, 18, width + 15, 18);
   display.drawString(width + 2, 17, String("m³"));
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 24, "2.5");
   display.display();
 }
 
@@ -472,36 +295,16 @@ void handleGPS() {
   if (tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
 }
 
-void loop() {
+void measure() {
   int index = 0;
+  int err = SimpleDHTErrSuccess;
   char value;
   char previousValue;
-  int err = SimpleDHTErrSuccess;
 
-  handleGPS();
-  ArduinoOTA.handle();
-  webServer->handleClient();
-  client->loop();
-
-  long now = millis();
-  paint_display(now, temperature, humidity);
-
-  if (now - lastSample < sampleGap * 1000) {
-    return;
-  }
-  lastSample = now;
-
-  time_t clocktime = time(nullptr);
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("not connected");
-  }
-
-  check_for_reconfigure();
-  
   if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
     Serial.printf("Read DHT11 failed, err=%d", err);
   }
+
   graph2[gindex] = temperature;
 
   while (Serial.available()) {
@@ -532,6 +335,210 @@ void loop() {
   while (Serial.available()) {
     Serial.read();
   }
+}
+
+void setup() {
+  WiFiManager wifiManager;
+  bool create_ota_password = true;
+  byte uuidNumber[16];
+  byte uuidCode[16];
+
+  Serial.begin(9600);
+  Serial.println("\n Starting");
+  pinMode(TRIGGER_PIN, INPUT);
+  WiFi.printDiag(Serial);
+
+  display.init();
+  display.setContrast(255);
+  display.clear();
+
+  ESP8266TrueRandom.uuid(uuidCode);
+  ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
+
+  if (SPIFFS.begin()) {
+    Serial.println("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      Serial.println("found /config.json");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        Serial.println("reading /config.json");
+        size_t size = configFile.size();
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        if (json.success()) {
+          Serial.println("\nparsed json");
+
+          if (json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
+          if (json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
+          if (json["uuid"]) strcpy(uuid, json["uuid"]);
+          if (json["gps_port"]) strcpy(gps_port, json["gps_port"]);
+          if (json["ota_password"]) {
+            strcpy(ota_password, json["ota_password"]);
+            create_ota_password = false;
+          }
+
+        } else {
+          Serial.println("failed to load json config");
+        }
+      }
+    }
+  } else {
+    Serial.println("failed to mount FS");
+  }
+
+  Serial.println("loaded config");
+
+  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
+  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
+  WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
+  WiFiManagerParameter custom_ota_password("ota_password", "OTA password (optional)", ota_password, 6);
+
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+
+  wifiManager.addParameter(&custom_mqtt_server);
+  wifiManager.addParameter(&custom_mqtt_port);
+  wifiManager.addParameter(&custom_gps_port);
+  if (create_ota_password) {
+    Serial.println("generating ota_password");
+    wifiManager.addParameter(&custom_ota_password);
+    saveConfigCallback();
+  }
+
+  snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
+  Serial.printf("autoconnect with AP name %s\n", ap_name);
+
+  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
+
+  Serial.swap();
+  wifiManager.setTimeout(120);
+  do {
+    measure();
+    paint_display(0, temperature, humidity);
+
+    display.setTextAlignment(TEXT_ALIGN_RIGHT);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(DISPLAY_WIDTH, 0, WiFi.SSID());
+    display.drawString(DISPLAY_WIDTH, 10, "...or connect to...");
+    display.drawString(DISPLAY_WIDTH, 20, String(ap_name));
+    display.display();
+  } while (!wifiManager.autoConnect(ap_name));
+
+  Serial.println("stored wifi connected");
+
+  strcpy(mqtt_server, custom_mqtt_server.getValue());
+  strcpy(mqtt_port, custom_mqtt_port.getValue());
+  strcpy(gps_port, custom_gps_port.getValue());
+  if (uuid == NULL || *uuid == 0) {
+    Serial.println("generating uuid");
+    ESP8266TrueRandom.uuid(uuidNumber);
+    ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
+    saveConfigCallback();
+  }
+
+  if (shouldSaveConfig) {
+    Serial.println("saving config");
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& json = jsonBuffer.createObject();
+    json["mqtt_server"] = mqtt_server;
+    json["mqtt_port"] = mqtt_port;
+    json["uuid"] = uuid;
+    json["gps_port"] = gps_port;
+    json["ota_password"] = ota_password;
+
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+
+    json.printTo(Serial);
+    Serial.println("");
+    json.printTo(configFile);
+    configFile.close();
+  }
+
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
+  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  display.display();
+
+  client = new PubSubClient(*(new WiFiClient()));
+  client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
+  client->setCallback(mqttCallback);
+
+  for (int i = 0; i < 300; i++) {
+    linea[i] = ' ';
+  }
+  tcpClient = new WiFiClientSecure();
+  tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
+  snprintf(particle_topic_name, 128, "%s/particles", uuid);
+  snprintf(error_topic_name, 128, "%s/errors", uuid);
+
+  Serial.printf("publishing data on %s\n", particle_topic_name);
+  Serial.printf("publishing errors on %s\n", error_topic_name);
+
+  Serial.printf("ota_password is %s\n", ota_password);
+
+  ArduinoOTA.setPassword(ota_password);
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+
+  MDNS.begin(MDNS_NAME);
+  MDNS.addService("http", "tcp", 80);
+  webServer = new ESP8266WebServer(80);
+  webServer->onNotFound([]() {
+    webServer->send(404, "text/plain", "File not found");
+  });
+  webServer->on("/", HTTP_GET, []() {
+    webServer->sendHeader("Connection", "close");
+    webServer->sendHeader("Access-Control-Allow-Origin", "*");
+    webServer->send(200, "text/html", serverIndex);
+  });
+  webServer->on("/update", HTTP_POST, []() {
+    webServer->sendHeader("Connection", "close");
+    webServer->sendHeader("Access-Control-Allow-Origin", "*");
+    webServer->send(200, "text/plain", String(update()));
+  });
+  webServer->begin();
+
+  configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+}
+
+void loop() {
+  handleGPS();
+  ArduinoOTA.handle();
+  webServer->handleClient();
+  client->loop();
+
+  long now = millis();
+  paint_display(now, temperature, humidity);
+
+  if (now - lastSample < sampleGap * 1000) {
+    return;
+  }
+  lastSample = now;
+
+  check_for_reconfigure();
+
+  measure();
 
   if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
