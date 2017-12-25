@@ -540,8 +540,8 @@ void loop() {
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-    snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
-             pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
+    snprintf(msg, 200, "{\"pm1\":%u,\"pm2\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
+             pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity);
 
     *errorMsg = 0;
     if (lastSample - lastReading > 30000) {
@@ -559,7 +559,8 @@ void loop() {
   if (now - lastReport > reportGap * 1000 && mqttConnect()) {
     Serial.printf("reporting %s\n", msg);
     lastReport = now;
-    client->publish(particle_topic_name, msg);
+    if(!client->publish(particle_topic_name, msg))
+      Serial.printf("failed to send %s", msg);
     if (*errorMsg)
       client->publish(error_topic_name, errorMsg);
   }
