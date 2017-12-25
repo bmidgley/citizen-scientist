@@ -116,7 +116,6 @@ int mqttConnect() {
     Serial.print("failed, rc=");
     Serial.println(client->state());
     disconnects += 1;
-    if (disconnects > MAX_DISCONNECTS) ESP.restart();
     return 0;
   }
 }
