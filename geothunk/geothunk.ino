@@ -61,7 +61,7 @@ byte temperature = 0;
 byte humidity = 0;
 
 int sampleGap = 10;
-int reportGap = 30;
+int reportGap = 60;
 int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[] = "$GPRMC";
