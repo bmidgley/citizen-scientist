@@ -531,29 +531,28 @@ void loop() {
   long now = millis();
   paint_display(now, temperature, humidity);
 
-  if (now - lastSample < sampleGap * 1000) {
-    return;
-  }
-  lastSample = now;
+  if (now - lastSample > sampleGap * 1000) {
+    lastSample = now;
 
-  check_for_reconfigure();
+    check_for_reconfigure();
 
-  measure();
+    measure();
 
-  if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
+    if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-  snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
-           pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
+    snprintf(msg, 200, "{\"pm1\":%u,\"pm2_5\":%u,\"pm10\":%u,\"lat\":%s%d.%d,\"lng\":%s%d.%d,\"ts\":%u,\"t\":%d,\"h\":%d}",
+             pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading, temperature, humidity);
 
-  *errorMsg = 0;
-  if (lastSample - lastReading > 30000) {
-    snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
-    if (now - lastSwap > 60000) {
-      Serial.println("swapping from here");
-      Serial.flush();
-      Serial.swap();
-      Serial.println("swapped to here");
-      lastSwap = now;
+    *errorMsg = 0;
+    if (lastSample - lastReading > 30000) {
+      snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
+      if (now - lastSwap > 60000) {
+        Serial.println("swapping from here");
+        Serial.flush();
+        Serial.swap();
+        Serial.println("swapped to here");
+        lastSwap = now;
+      }
     }
   }
 
