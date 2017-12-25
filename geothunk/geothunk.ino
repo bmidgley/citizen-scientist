@@ -557,7 +557,8 @@ void loop() {
     }
   }
 
-  if (now - lastReport < reportGap * 1000 && mqttConnect()) {
+  if (now - lastReport > reportGap * 1000 && mqttConnect()) {
+    Serial.printf("reporting %s\n", msg);
     lastReport = now;
     client->publish(particle_topic_name, msg);
     if (*errorMsg)
