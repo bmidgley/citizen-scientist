@@ -418,6 +418,7 @@ void setup() {
     measure();
     paint_display(0, temperature, humidity);
 
+    display.setColor(INVERSE);
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_10);
     display.drawString(DISPLAY_WIDTH, 0, WiFi.SSID());
