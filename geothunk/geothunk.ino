@@ -104,6 +104,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 }
 
 int mqttConnect() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return 0;
+  }
+
   if (client->connected()) {
     disconnects = 0;
     return 1;
