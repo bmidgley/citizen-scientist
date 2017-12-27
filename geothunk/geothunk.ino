@@ -31,16 +31,17 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define MAX_DISCONNECTS 10
-#define VERSION "1.10"
+#define VERSION "1.12"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
 long lastSample = 0;
 long lastReport = 0;
 long lastReading = 0;
+long lastReconfigure = 0;
 long lastSwap = 0;
-char msg[200];
-char errorMsg[200];
+char msg[200] = "";
+char errorMsg[200] = "";
 int disconnects = 0;
 
 char mqtt_server[40] = "mqtt.geothunk.com";
@@ -60,8 +61,9 @@ unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
 
-int sampleGap = 10;
-int reportGap = 60;
+int sampleGap = 10 * 1000;
+int reportGap = 60 * 1000;
+int reconfigureGap = 5 * 1000;
 int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[] = "$GPRMC";
@@ -415,6 +417,10 @@ void setup() {
   Serial.swap();
   wifiManager.setTimeout(120);
   do {
+    if ( digitalRead(TRIGGER_PIN) == LOW ) {
+      WiFi.disconnect(true);
+    }
+
     measure();
     paint_display(0, temperature, humidity);
 
@@ -508,9 +514,11 @@ void setup() {
     webServer->send(404, "text/plain", "File not found");
   });
   webServer->on("/", HTTP_GET, []() {
+    char page[356];
+    snprintf(page, 356, "<pre>%s</pre><pre>%s</pre><br>%s", msg, errorMsg, serverIndex);
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/html", serverIndex);
+    webServer->send(200, "text/html", page);
   });
   webServer->on("/update", HTTP_POST, []() {
     webServer->sendHeader("Connection", "close");
@@ -531,17 +539,21 @@ void loop() {
   long now = millis();
   paint_display(now, temperature, humidity);
 
-  if (now - lastSample > sampleGap * 1000) {
-    lastSample = now;
+  if(now - lastReconfigure > reconfigureGap) {
+    lastReconfigure = now;
 
     check_for_reconfigure();
+  }
+
+  if (now - lastSample > sampleGap) {
+    lastSample = now;
 
     measure();
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-    snprintf(msg, 200, "{\"pm1\":%u,\"pm2\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
-             pm1, pm2_5, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity);
+    snprintf(msg, 200, "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
+             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity);
 
     *errorMsg = 0;
     if (lastSample - lastReading > 30000) {
@@ -556,12 +568,14 @@ void loop() {
     }
   }
 
-  if (now - lastReport > reportGap * 1000 && mqttConnect()) {
-    Serial.printf("reporting %s\n", msg);
+  if (now - lastReport > reportGap && mqttConnect()) {
     lastReport = now;
+
     if(!client->publish(particle_topic_name, msg))
       Serial.printf("failed to send %s", msg);
-    if (*errorMsg)
+    if (*errorMsg) {
       client->publish(error_topic_name, errorMsg);
+      *errorMsg = '\0';
+    }
   }
 }
