@@ -1,4 +1,9 @@
 //#define SPI_DISPLAY
+//#define DEBUG
+
+#ifdef SPI_DISPLAY
+#define NO_AUTO_SWAP
+#endif
 
 #include <FS.h>
 #include <ESP8266WiFi.h>
@@ -91,7 +96,7 @@ WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
 #ifdef SPI_DISPLAY
-SSD1306Spi display(D1, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
+SSD1306Spi display(D8, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
 #else
 SSD1306 display(0x3c, 5, 4);
 #endif
@@ -103,6 +108,7 @@ t_httpUpdate_return update() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+#ifdef DEBUG
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
@@ -111,6 +117,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.print(receivedChar);
   }
   Serial.println();
+#endif
 }
 
 int mqttConnect() {
@@ -123,21 +130,16 @@ int mqttConnect() {
     return 1;
   }
 
-  Serial.print("Attempting MQTT connection...");
   if (client->connect(uuid)) {
-    Serial.println("connected");
     client->subscribe("clients");
     return 1;
   } else {
-    Serial.print("failed, rc=");
-    Serial.println(client->state());
     disconnects += 1;
     return 0;
   }
 }
 
 void saveConfigCallback () {
-  Serial.println("Should save config");
   shouldSaveConfig = true;
 }
 
@@ -156,7 +158,6 @@ void check_for_reconfigure() {
 
     reconfigure_counter++;
     if (reconfigure_counter > 2) {
-      Serial.println("disconnecting from wifi to reconfigure");
       WiFi.disconnect(true);
 
       display.clear();
@@ -220,7 +221,6 @@ int handle_gps_byte(int byteGPS) {
             break;
         }
       }
-      Serial.print(".");
     }
     conta = 0;
     for (int i = 0; i < 300; i++) {
@@ -316,9 +316,12 @@ void measure() {
   char value;
   char previousValue;
 
-  if ((err = dht11.read(pinDHT11, &temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+  err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
+#ifdef DEBUG
+  if(err != SimpleDHTErrSuccess) {
     Serial.printf("Read DHT11 failed, err=%d", err);
   }
+#endif
 
   graph2[gindex] = temperature;
 
@@ -428,7 +431,10 @@ void setup() {
 
   for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
 
+#ifndef NO_AUTO_SWAP
   Serial.swap();
+#endif
+
   wifiManager.setTimeout(120);
   do {
     if ( digitalRead(TRIGGER_PIN) == LOW ) {
@@ -572,6 +578,7 @@ void loop() {
     *errorMsg = 0;
     if (lastSample - lastReading > 30000) {
       snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
+#ifndef NO_AUTO_SWAP
       if (now - lastSwap > 60000) {
         Serial.println("swapping from here");
         Serial.flush();
@@ -579,6 +586,7 @@ void loop() {
         Serial.println("swapped to here");
         lastSwap = now;
       }
+#endif
     }
   }
 
