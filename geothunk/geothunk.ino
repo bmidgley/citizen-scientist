@@ -529,7 +529,7 @@ void setup() {
   });
   webServer->on("/", HTTP_GET, []() {
     char page[356];
-    snprintf(page, 356, "<pre>%s</pre><pre>%s</pre><br>%s", msg, errorMsg, serverIndex);
+    snprintf(page, 356, "<p>%s<p><p>%s</p><pre>%s</pre><pre>%s</pre><br>%s", uuid, version, msg, errorMsg, serverIndex);
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
     webServer->send(200, "text/html", page);
