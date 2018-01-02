@@ -1,10 +1,16 @@
+//#define SPI_DISPLAY
+
 #include <FS.h>
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-#include "SSD1306.h"
+#ifdef SPI_DISPLAY
+#include "SSD1306Spi.h"
+#else
+#include "SSD1306Spi.h"
+#endif
 #include "ESP8266TrueRandom.h"
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
@@ -84,7 +90,11 @@ int gindex = 0;
 WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
+#ifdef SPI_DISPLAY
+SSD1306Spi display(D1, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
+#else
 SSD1306 display(0x3c, 5, 4);
+#endif
 
 const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form>";
 
