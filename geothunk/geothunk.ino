@@ -11,11 +11,8 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-#ifdef SPI_DISPLAY
 #include "SSD1306Spi.h"
-#else
-#include "SSD1306Spi.h"
-#endif
+#include "SSD1306.h"
 #include "ESP8266TrueRandom.h"
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
@@ -41,7 +38,6 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define MAX_DISCONNECTS 10
 #define VERSION "1.12"
 #define POINTS 128
 
