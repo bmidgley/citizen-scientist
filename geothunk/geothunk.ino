@@ -25,7 +25,7 @@
 #include <time.h>
 #include <SimpleDHT.h>
 
-int pinDHT11 = 2;
+int pinDHT11 = D1;
 SimpleDHT11 dht11;
 
 // use arduino library manager to get libraries
