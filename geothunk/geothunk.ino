@@ -97,7 +97,10 @@ SSD1306Spi display(D8, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
 SSD1306 display(0x3c, 5, 4);
 #endif
 
-const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form>";
+const char* serverIndex = "<html> <canvas id='graphcanvas1' width='800' height='400'/><p>Units are µg per m³. Green=pm2.5 Red=pm1 Blue=pm10</p> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
+var sc = new SmoothieChart({ millisPerPixel: 1000, yRangeFunction: function(r) { return { min: 0, max: Math.ceil(1.1 * r.max) } } }); var line1 = new TimeSeries(); var line2 = new TimeSeries(); var line3 = new TimeSeries(); \
+sc.addTimeSeries(line1, { strokeStyle:'rgb(0, 255, 0)', fillStyle:'rgba(0, 255, 0, 0.4)', lineWidth:3 }); sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 0, 0.4)', lineWidth:3 }); sc.addTimeSeries(line3, { strokeStyle:'rgb(0, 0, 255)', fillStyle:'rgba(0, 0, 255, 0.4)', lineWidth:3 }); sc.streamTo(document.getElementById('graphcanvas1')); \
+setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); line3.append(Date.now(), data.pm10); }); }, 5000); </script> <form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form> </html>";
 
 t_httpUpdate_return update() {
   return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk-" VERSION ".ino.bin");
@@ -530,16 +533,14 @@ void setup() {
     webServer->send(404, "text/plain", "File not found");
   });
   webServer->on("/", HTTP_GET, []() {
-    char page[356];
-    snprintf(page, 356, "<p>%s<p><p>%s</p><pre>%s</pre><pre>%s</pre><br>%s", uuid, version, msg, errorMsg, serverIndex);
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/html", page);
+    webServer->send(200, "text/html", serverIndex);
   });
-  webServer->on("/update", HTTP_POST, []() {
+  webServer->on("/stats", HTTP_GET, []() {
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/plain", String(update()));
+    webServer->send(200, "application/json", msg);
   });
   webServer->begin();
 
