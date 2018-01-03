@@ -97,14 +97,16 @@ SSD1306Spi display(D8, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
 SSD1306 display(0x3c, 5, 4);
 #endif
 
-const char* serverIndex = "<html> <canvas id='graphcanvas1' width='1200' height='600'/><p>Units are µg per m³. Green=pm2.5 Red=pm1 Blue=pm10</p> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
-var sc = new SmoothieChart({ millisPerPixel: 1000, labels: { precision: 0 }, grid: { millisPerLine: 100000, verticalSections: 10 }, yRangeFunction: function(r) { return { min: 0, max: 10*Math.ceil(0.09 * r.max) } } }); var line1 = new TimeSeries(); var line2 = new TimeSeries(); var line3 = new TimeSeries(); \
-sc.addTimeSeries(line1, { strokeStyle:'rgb(0, 255, 0)', fillStyle:'rgba(0, 255, 0, 0.4)', lineWidth:3 }); \
+const char* serverIndex = "<html><head><script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
+var sc = new SmoothieChart({ millisPerPixel: 1000, labels: { fontSize: 30, precision: 0 }, grid: { fillStyle: '#3399ff', millisPerLine: 100000, verticalSections: 10 }, yRangeFunction: function(r) { return { min: 0, max: 10*Math.ceil(0.09 * r.max) } } }); \
+var line1 = new TimeSeries(); var line2 = new TimeSeries(); var line3 = new TimeSeries(); \
+sc.addTimeSeries(line1, { strokeStyle:'rgb(180, 50, 0)', fillStyle:'rgba(180, 50, 0, 0.4)', lineWidth:3 }); \
 sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 0, 0.4)', lineWidth:3 }); \
-sc.addTimeSeries(line3, { strokeStyle:'rgb(0, 0, 255)', fillStyle:'rgba(0, 0, 255, 0.4)', lineWidth:3 }); \
-sc.streamTo(document.getElementById('graphcanvas1')); \
+sc.addTimeSeries(line3, { strokeStyle:'rgb(255, 50, 0)', fillStyle:'rgba(255, 50, 0, 0.4)', lineWidth:3 }); \
+$(document).ready(function() { sc.streamTo(document.getElementById('graphcanvas1')); }); \
 setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); line3.append(Date.now(), data.pm10); }); }, 5000); \
-</script> <form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form> </html>";
+</script></head><body>  <canvas id='graphcanvas1' width='1200' height='600'/><p>Units are µg per m³. Green=pm2.5 Red=pm1 Blue=pm10</p> \
+<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form></body></html>";
 
 t_httpUpdate_return update() {
   return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk-" VERSION ".ino.bin");
