@@ -38,7 +38,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.12"
+#define VERSION "1.13"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -68,7 +68,7 @@ unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
 
-int sampleGap = 10 * 1000;
+int sampleGap = 2 * 1000;
 int reportGap = 60 * 1000;
 int reconfigureGap = 5 * 1000;
 int byteGPS = -1;
@@ -104,9 +104,8 @@ sc.addTimeSeries(line1, { strokeStyle:'rgb(180, 50, 0)', fillStyle:'rgba(180, 50
 sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 0, 0.4)', lineWidth:3 }); \
 sc.addTimeSeries(line3, { strokeStyle:'rgb(255, 50, 0)', fillStyle:'rgba(255, 50, 0, 0.4)', lineWidth:3 }); \
 $(document).ready(function() { sc.streamTo(document.getElementById('graphcanvas1')); }); \
-setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); line3.append(Date.now(), data.pm10); }); }, 5000); \
-</script></head><body>  <canvas id='graphcanvas1' style='width:100%; height:75%;' /><p>Units are µg per m³. Green=pm2.5 Red=pm1 Blue=pm10</p> \
-<form method='POST' action='/update' enctype='multipart/form-data'><input type='hidden' name='id'><input type='submit' value='Update'></form></body></html>";
+setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); line3.append(Date.now(), data.pm10); }); }, 2000); \
+</script></head><body>  <canvas id='graphcanvas1' style='width:100%; height:75%;' /></body></html>";
 
 t_httpUpdate_return update() {
   return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk-" VERSION ".ino.bin");
