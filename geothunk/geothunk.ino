@@ -22,7 +22,7 @@
 #include <time.h>
 #include <SimpleDHT.h>
 
-int pinDHT11 = D1;
+int pinDHT11 = D3;
 SimpleDHT11 dht11;
 
 // use arduino library manager to get libraries
@@ -92,7 +92,7 @@ WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
 #ifdef SPI_DISPLAY
-SSD1306Spi display(D8, D2, D3); // rst n/c, dc D2, cs D3, clk D5, mosi D7
+SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi D7
 #else
 SSD1306 display(0x3c, 5, 4);
 #endif
