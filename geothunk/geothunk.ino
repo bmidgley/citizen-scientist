@@ -368,7 +368,6 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
-  WiFi.printDiag(Serial);
 
   display.init();
   display.setContrast(255);
