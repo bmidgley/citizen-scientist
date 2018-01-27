@@ -4,6 +4,7 @@
 #ifdef SPI_DISPLAY
 #define NO_AUTO_SWAP
 #endif
+//#define NO_AUTO_SWAP
 
 #include <FS.h>
 #include <ESP8266WiFi.h>
@@ -38,7 +39,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.13"
+#define VERSION "1.14"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -92,7 +93,7 @@ WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
 #ifdef SPI_DISPLAY
-SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi D7
+SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #else
 SSD1306 display(0x3c, 5, 4);
 #endif
@@ -104,7 +105,7 @@ sc.addTimeSeries(line1, { strokeStyle:'rgb(180, 50, 0)', fillStyle:'rgba(180, 50
 sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 0, 0.4)', lineWidth:3 }); \
 sc.addTimeSeries(line3, { strokeStyle:'rgb(255, 50, 0)', fillStyle:'rgba(255, 50, 0, 0.4)', lineWidth:3 }); \
 $(document).ready(function() { sc.streamTo(document.getElementById('graphcanvas1')); }); \
-setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); line3.append(Date.now(), data.pm10); }); }, 2000); \
+setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); if(data.pm10 < 3*data.pm2) line3.append(Date.now(), data.pm10); }); }, 2000); \
 </script></head><body>  <canvas id='graphcanvas1' style='width:100%; height:75%;' /></body></html>";
 
 t_httpUpdate_return update() {
