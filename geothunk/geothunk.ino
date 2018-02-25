@@ -494,7 +494,7 @@ void setup() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
+  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
