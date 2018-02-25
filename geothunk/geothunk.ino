@@ -39,7 +39,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.14"
+#define VERSION "1.16"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -69,7 +69,7 @@ unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
 
-int sampleGap = 2 * 1000;
+int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
 int reconfigureGap = 5 * 1000;
 int byteGPS = -1;
@@ -371,6 +371,7 @@ void setup() {
   pinMode(TRIGGER_PIN, INPUT);
 
   display.init();
+  display.flipScreenVertically();
   display.setContrast(255);
   display.clear();
 
