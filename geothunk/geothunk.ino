@@ -39,7 +39,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.16"
+#define VERSION "1.17"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -459,6 +459,8 @@ void setup() {
   } while (!wifiManager.autoConnect(ap_name));
 
   Serial.println("stored wifi connected");
+
+  WiFi.setAutoConnect(true);
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
