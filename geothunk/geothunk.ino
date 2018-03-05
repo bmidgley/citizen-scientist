@@ -1,10 +1,10 @@
 //#define SPI_DISPLAY
+//#define NO_AUTO_SWAP
 //#define DEBUG
 
 #ifdef SPI_DISPLAY
 #define NO_AUTO_SWAP
 #endif
-//#define NO_AUTO_SWAP
 
 #include <FS.h>
 #include <ESP8266WiFi.h>
@@ -371,7 +371,9 @@ void setup() {
   pinMode(TRIGGER_PIN, INPUT);
 
   display.init();
+#ifndef SPI_DISPLAY
   display.flipScreenVertically();
+#endif
   display.setContrast(255);
   display.clear();
 
