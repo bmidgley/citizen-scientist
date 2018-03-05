@@ -299,7 +299,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setFont(ArialMT_Plain_24);
   width = display.getStringWidth(String(pm2_5));
   display.setColor(BLACK);
-  display.fillRect(0, 0, width + 23, 33);
+  display.fillRect(0, 0, width + 23, 34);
   display.setColor(WHITE);
   display.drawString(0, 4, String(pm2_5));
   display.setFont(ArialMT_Plain_16);
