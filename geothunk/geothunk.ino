@@ -14,6 +14,7 @@
 #include <PubSubClient.h>
 #include "SSD1306Spi.h"
 #include "SSD1306.h"
+#include "SH1106.h"
 #include "ESP8266TrueRandom.h"
 #include <ArduinoJson.h>
 #include <ESP8266mDNS.h>
@@ -95,7 +96,8 @@ ESP8266WebServer *webServer;
 #ifdef SPI_DISPLAY
 SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #else
-SSD1306 display(0x3c, 5, 4);
+//SSD1306 display(0x3c, 5, 4);
+SH1106 display(0x3c, D1, D2);
 #endif
 
 const char* serverIndex = "<html><head><script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
