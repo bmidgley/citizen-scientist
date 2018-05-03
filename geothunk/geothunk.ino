@@ -1,6 +1,9 @@
 //#define SPI_DISPLAY
 //#define NO_AUTO_SWAP
 //#define DEBUG
+#ifdef DEBUG
+#define NO_AUTO_SWAP
+#endif
 
 #ifdef SPI_DISPLAY
 #define NO_AUTO_SWAP
@@ -39,7 +42,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.17"
+#define VERSION "1.19"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -265,6 +268,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   String status = String(how_good(pm2_5));
   int location;
   int width;
+  long hours = now / (60 * 60 * 1000);
+  long days = hours / 24;
 
   display.clear();
   display.setColor(WHITE);
@@ -282,10 +287,12 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("%h"));
   display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  if (now < 24 * 60 * 60 * 1000)
-    uptime = String(now / (60 * 60 * 1000)) + String("h");
+  if (hours < 24)
+    uptime = String(hours) + String("h");
+  else if(days < 30)
+    uptime = String(days) + String("d");
   else
-    uptime = String(now / (24 * 60 * 60 * 1000)) + String("d");
+    uptime = String(days/30) + String("m");
   display.drawString(0, 34, uptime + String(" v") + String(version));
   display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
   if (WiFi.status() == WL_CONNECTED) {
