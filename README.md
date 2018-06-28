@@ -6,7 +6,7 @@ Monitor air quality and automatically share the collected data using inexpensive
 
 ## Setup
 
-Install [arduino](hhttps://www.arduino.cc/en/Main/Software) 1.8.2 or newer
+Install [arduino](https://www.arduino.cc/en/Main/Software) 1.8.2 or newer
 
 Install serial driver from [vendor drivers](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
 
