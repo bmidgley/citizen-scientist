@@ -2,7 +2,32 @@
 
 Monitor air quality and automatically share the collected data using inexpensive hardware.
 
-[OpenWest slides](https://goo.gl/4wqC1P) show how to build the project, including slide 20 with wiring explanation.
+[OpenWest slides](https://docs.google.com/presentation/d/14199zjeJYKTTuAwEFpema6mJRyAuVe0BQ5JEuAFFPP4/edit?usp=sharing) show how to build the project, including slide 24 with wiring explanation.
+
+## Setup
+
+Install [arduino](hhttps://www.arduino.cc/en/Main/Software) 1.8.2 or newer
+
+Install serial driver from [vendor drivers](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
+
+Set up [esp8266 runtime](http://esp8266.github.io/Arduino/versions/2.0.0/doc/installing.html) for arduino
+
+Select board. Tools->Board->NodeMCU 1.0 (ESP-12E Module)
+
+Libraries: sketch->include library->manage libraries
+* WiFiManager
+* ArduinoJson
+* PubSubClient
+* ArduinoOTA
+* SimpleDHT
+* "ESP8266 and ESP32 Oled Driver for SSD1306 display"
+* Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
+
+Plug in board and choose the board. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART
+
+Reboot and check your USB cable is a full power+data cable if the port isn't available.
+
+Open geothunk.ino in arduino and hit the upload button.
 
 ## Contributors
 
