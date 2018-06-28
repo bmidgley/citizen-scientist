@@ -533,7 +533,7 @@ void setup() {
 
   Serial.printf("ota_password is %s\n", ota_password);
 
-  ArduinoOTA.setPassword(ota_password);
+  //ArduinoOTA.setPassword(ota_password);
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
