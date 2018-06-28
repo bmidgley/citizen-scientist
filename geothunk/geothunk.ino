@@ -43,7 +43,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.19"
+#define VERSION "1.20"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -111,7 +111,7 @@ sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 
 sc.addTimeSeries(line3, { strokeStyle:'rgb(255, 50, 0)', fillStyle:'rgba(255, 50, 0, 0.4)', lineWidth:3 }); \
 $(document).ready(function() { sc.streamTo(document.getElementById('graphcanvas1')); }); \
 setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.pm2); line2.append(Date.now(), data.pm1); if(data.pm10 < 3*data.pm2) line3.append(Date.now(), data.pm10); }); }, 2000); \
-</script></head><body>  <canvas id='graphcanvas1' style='width:100%; height:75%;' /></body></html>";
+</script></head><body>  <canvas id='graphcanvas1' style='width:100%%; height:75%%;'></canvas><p>Register device <a href='https://geothunk.com/devices?d=%s'>online</a>.</p></body></html>";
 
 t_httpUpdate_return update() {
   return ESPhttpUpdate.update("http://updates.geothunk.com/updates/geothunk-" VERSION ".ino.bin");
@@ -554,9 +554,11 @@ void setup() {
     webServer->send(404, "text/plain", "File not found");
   });
   webServer->on("/", HTTP_GET, []() {
+    char response[1600];
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    webServer->send(200, "text/html", serverIndex);
+    snprintf(response, 1600, serverIndex, uuid);
+    webServer->send(200, "text/html", response);
   });
   webServer->on("/stats", HTTP_GET, []() {
     webServer->sendHeader("Connection", "close");
