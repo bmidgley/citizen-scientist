@@ -29,6 +29,10 @@ Reboot and check your USB cable is a full power+data cable if the port isn't ava
 
 Open geothunk.ino in arduino and hit the upload button.
 
+Power on the board and use your phone to connect to the GeothunkXXX access point. In the captive portal screen, set the password for your access point. Hit save.
+
+If you're on the same access point as the sensor, you should be able to see stats for your device by clicking its [geothunk.local](http://geothunk.local) mdns link.
+
 ## Contributors
 
 * Brad Midgley wrote the firmware and built the sensor
