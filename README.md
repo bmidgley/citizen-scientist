@@ -23,9 +23,7 @@ Libraries: sketch->include library->manage libraries
 * "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 * Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
 
-Plug in board and choose the board. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART
-
-Reboot and check your USB cable is a full power+data cable if the port isn't available.
+Plug in board and choose the port. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART (Reboot and check your USB cable is a full power+data cable if the port isn't available.)
 
 Open geothunk.ino in arduino and hit the upload button.
 
