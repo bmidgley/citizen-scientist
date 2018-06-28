@@ -25,9 +25,9 @@ Libraries: sketch->include library->manage libraries
 
 Plug in board and choose the port. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART (Reboot and check your USB cable is a full power+data cable if the port isn't available.)
 
-hit the upload button.
+Hit the upload button.
 
-Power on the board and use your phone to connect to the Geothunk-XXX access point. In the captive portal screen, set the password for your access point. Hit save. There is a [youtube video](https://www.youtube.com/watch?v=-iKyWOWEP4E&t=4s) to show this in practice.
+Reboot the board and use your phone to connect to the Geothunk-XXX access point. In the captive portal screen, set the password for your access point. Hit save. There is a [youtube video](https://www.youtube.com/watch?v=-iKyWOWEP4E&t=4s) to show this in practice.
 
 If you're on the same access point as the sensor, you should be able to see graphs for your measurements by clicking its [geothunk.local](http://geothunk.local) mdns link. If mdns isn't working or you have multiple sensors, point a browser at the IP address displayed on the device instead.
 
