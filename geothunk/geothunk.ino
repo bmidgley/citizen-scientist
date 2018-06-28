@@ -25,6 +25,7 @@
 #include <WiFiClientSecure.h>
 #include <time.h>
 #include <SimpleDHT.h>
+#include <Servo.h>
 
 int pinDHT11 = D3;
 SimpleDHT11 dht11;
@@ -100,6 +101,7 @@ SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #else
 SSD1306 display(0x3c, 5, 4);
 #endif
+Servo myservo;
 
 const char* serverIndex = "<html><head><script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
 var sc = new SmoothieChart({ responsive: true, millisPerPixel: 1000, labels: { fontSize: 30, precision: 0 }, grid: { fillStyle: '#6699ff', millisPerLine: 100000, verticalSections: 10 }, yRangeFunction: function(r) { return { min: 0, max: Math.max(30, 10*Math.ceil(0.09 * r.max)) } } }); \
@@ -377,6 +379,7 @@ void setup() {
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
   WiFi.printDiag(Serial);
+  myservo.attach(D0);
 
   display.init();
 #ifndef SPI_DISPLAY
@@ -584,6 +587,8 @@ void loop() {
     lastSample = now;
 
     measure();
+
+    myservo.write(map(pm2_5, 0, 30, 180, 0));
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
