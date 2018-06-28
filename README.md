@@ -2,7 +2,18 @@
 
 Monitor air quality and automatically share the collected data using inexpensive hardware.
 
-[OpenWest slides](https://goo.gl/4wqC1P) show how to build the project, including slide 20 with wiring explanation.
+[OpenWest slides](https://docs.google.com/presentation/d/14199zjeJYKTTuAwEFpema6mJRyAuVe0BQ5JEuAFFPP4/edit?usp=sharing) show how to build the project, including slide 24 with wiring explanation.
+
+## Setup
+
+Libraries: sketch->include library->manage libraries
+* WiFiManager
+* ArduinoJson
+* PubSubClient
+* ArduinoOTA
+* SimpleDHT
+* "ESP8266 and ESP32 Oled Driver for SSD1306 display"
+* Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
 
 ## Contributors
 
