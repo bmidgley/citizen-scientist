@@ -450,7 +450,7 @@ void setup() {
   Serial.swap();
 #endif
 
-  wifiManager.setTimeout(120);
+  wifiManager.setTimeout(600);
   do {
     if ( digitalRead(TRIGGER_PIN) == LOW ) {
       WiFi.disconnect(true);
