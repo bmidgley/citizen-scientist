@@ -23,11 +23,15 @@ Libraries: sketch->include library->manage libraries
 * "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 * Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
 
-Plug in board and choose the board. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART
-
-Reboot and check your USB cable is a full power+data cable if the port isn't available.
+Plug in board and choose the port. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART (Reboot and check your USB cable is a full power+data cable if the port isn't available.)
 
 Open geothunk.ino in arduino and hit the upload button.
+
+Power on the board and use your phone to connect to the Geothunk-XXX access point. In the captive portal screen, set the password for your access point. Hit save. There is a [youtube video](https://www.youtube.com/watch?v=-iKyWOWEP4E&t=4s) to show this in practice.
+
+If you're on the same access point as the sensor, you should be able to see stats for your device by clicking its [geothunk.local](http://geothunk.local) mdns link.
+
+Register and agree to share your data with our [agreement](https://docs.google.com/forms/d/e/1FAIpQLScs9sQVZbnWg0XCuS6sA2pAkzf4LLobDE_Wj_pccsHPoGVKmw/viewform)
 
 ## Contributors
 
