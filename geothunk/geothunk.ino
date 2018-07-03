@@ -302,21 +302,23 @@ void paint_display(long now, byte temperature, byte humidity) {
   } else {
     display.drawString(0, DISPLAY_HEIGHT - 10, "No wifi connection");
   }
-  display.setColor(INVERSE);
-  graph_set(graph, POINTS, 36, 12, gindex);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_24);
-  width = display.getStringWidth(String(pm2_5));
-  display.setColor(BLACK);
-  display.fillRect(0, 0, width + 23, 34);
-  display.setColor(WHITE);
-  display.drawString(0, 4, String(pm2_5));
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(width, 0, String("µg"));
-  display.drawLine(width + 3, 18, width + 15, 18);
-  display.drawString(width + 2, 17, String("m³"));
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 24, "2.5");
+  if(lastReading > 0) {
+    display.setColor(INVERSE);
+    graph_set(graph, POINTS, 36, 12, gindex);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_24);
+    width = display.getStringWidth(String(pm2_5));
+    display.setColor(BLACK);
+    display.fillRect(0, 0, width + 23, 34);
+    display.setColor(WHITE);
+    display.drawString(0, 4, String(pm2_5));
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(width, 0, String("µg"));
+    display.drawLine(width + 3, 18, width + 15, 18);
+    display.drawString(width + 2, 17, String("m³"));
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 24, "2.5");
+  }
   display.display();
 }
 
