@@ -343,6 +343,11 @@ void measure() {
 
   while (Serial.available()) {
     value = Serial.read();
+
+#ifdef DEBUG
+    Serial.printf("serial[%2d] = %d\n", index, value);
+#endif
+
     if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)) {
       break;
     }
@@ -369,6 +374,10 @@ void measure() {
   while (Serial.available()) {
     Serial.read();
   }
+
+#ifdef DEBUG
+  Serial.printf("\n");
+#endif
 }
 
 void setup() {
@@ -534,8 +543,10 @@ void setup() {
   Serial.printf("publishing errors on %s\n", error_topic_name);
 
   Serial.printf("ota_password is %s\n", ota_password);
+#ifndef DEBUG
+  ArduinoOTA.setPassword(ota_password);
+#endif
 
-  //ArduinoOTA.setPassword(ota_password);
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
