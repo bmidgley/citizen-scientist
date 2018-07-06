@@ -1,6 +1,6 @@
 //#define SPI_DISPLAY
 //#define NO_AUTO_SWAP
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
 #define NO_AUTO_SWAP
 #endif
