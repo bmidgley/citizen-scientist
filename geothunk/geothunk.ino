@@ -43,6 +43,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
+#define LED_PIN D4
 #define VERSION "1.20"
 #define POINTS 128
 
@@ -72,6 +73,7 @@ unsigned int pm2_5 = 0;
 unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
+unsigned int analog = 0;
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
@@ -273,6 +275,8 @@ void paint_display(long now, byte temperature, byte humidity) {
   long hours = now / (60 * 60 * 1000);
   long days = hours / 24;
 
+  digitalWrite(LED_PIN, analog > 150 ? LOW : HIGH);
+
   display.clear();
   display.setColor(WHITE);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -335,49 +339,53 @@ void measure() {
   err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
 #ifdef DEBUG
   if(err != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed, err=%d", err);
+    Serial.printf("Read DHT11 failed, err=%d\n", err);
   }
 #endif
+
+  analog = analogRead(A0);
+  //lastReading = millis();
 
   graph2[gindex] = temperature;
 
-  while (Serial.available()) {
-    value = Serial.read();
+  if (Serial.available()) {
+    while (Serial.available()) {
+      value = Serial.read();
 
 #ifdef DEBUG
-    Serial.printf("serial[%2d] = %d\n", index, value);
+      Serial.printf("serial[%2d] = %d\n", index, value);
 #endif
 
-    if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)) {
-      break;
-    }
+      if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)) {
+        break;
+      }
 
-    if (index == 4 || index == 6 || index == 8 || index == 10 || index == 12 || index == 14) {
-      previousValue = value;
+      if (index == 4 || index == 6 || index == 8 || index == 10 || index == 12 || index == 14) {
+        previousValue = value;
+      }
+      else if (index == 5) {
+        pm1 = 256 * previousValue + value;
+      }
+      else if (index == 7) {
+        pm2_5 = 256 * previousValue + value;
+      }
+      else if (index == 9) {
+        pm10 = 256 * previousValue + value;
+        lastReading = millis();
+        graph[gindex] = pm2_5;
+        gindex = (gindex + 1) % POINTS;
+      } else if (index > 15) {
+        break;
+      }
+      index++;
     }
-    else if (index == 5) {
-      pm1 = 256 * previousValue + value;
-    }
-    else if (index == 7) {
-      pm2_5 = 256 * previousValue + value;
-    }
-    else if (index == 9) {
-      pm10 = 256 * previousValue + value;
-      lastReading = millis();
-      graph[gindex] = pm2_5;
-      gindex = (gindex + 1) % POINTS;
-    } else if (index > 15) {
-      break;
-    }
-    index++;
-  }
-  while (Serial.available()) {
-    Serial.read();
-  }
-
 #ifdef DEBUG
-  Serial.printf("\n");
+    Serial.printf("\n");
 #endif
+    while (Serial.available()) {
+      Serial.read();
+    }
+  }
 }
 
 void setup() {
@@ -389,6 +397,7 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
   WiFi.printDiag(Serial);
   myservo.attach(D0);
 
@@ -607,8 +616,8 @@ void loop() {
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-    snprintf(msg, 200, "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
-             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity);
+    snprintf(msg, 200, "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d,\"a\":%u}",
+             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity, analog);
 
     *errorMsg = 0;
     if (lastSample - lastReading > 30000) {
@@ -628,11 +637,17 @@ void loop() {
   if (now - lastReport > reportGap && mqttConnect()) {
     lastReport = now;
 
-    if(!client->publish(particle_topic_name, msg))
+    if(!client->publish(particle_topic_name, msg)) {
+#ifdef DEBUG
       Serial.printf("failed to send %s", msg);
+#endif
+    }
     if (*errorMsg) {
       client->publish(error_topic_name, errorMsg);
       *errorMsg = '\0';
     }
+#ifdef DEBUG
+   Serial.printf("%s\n", msg);
+#endif
   }
 }
