@@ -163,8 +163,8 @@ void check_for_reconfigure() {
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
       display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Hold to clear settings"));
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, String(3 - reconfigure_counter));
+      display.drawString(display.getWidth() / 2, display.getHeight() / 2 - 10, String("Hold to clear settings"));
+      display.drawString(display.getWidth() / 2, display.getHeight() / 2, String(3 - reconfigure_counter));
       display.display();
     }
 
@@ -175,7 +175,7 @@ void check_for_reconfigure() {
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
       display.setFont(ArialMT_Plain_10);
-      display.drawString(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 - 10, String("Release and tap reset"));
+      display.drawString(display.getWidth() / 2, display.getHeight() / 2 - 10, String("Release and tap reset"));
       display.display();
     }
     return;
@@ -289,9 +289,9 @@ void paint_display(long now, byte temperature, byte humidity) {
   }
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, 34, String("1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
-  display.drawString(DISPLAY_WIDTH, 44, String(humidity) + String("%h"));
-  display.drawString(DISPLAY_WIDTH, 54, String(round(f)) + String("°"));
+  display.drawString(display.getWidth(), 34, String("1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
+  display.drawString(display.getWidth(), 44, String(humidity) + String("%h"));
+  display.drawString(display.getWidth(), 54, String(round(f)) + String("°"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if (hours < 24)
     uptime = String(hours) + String("h");
@@ -300,11 +300,11 @@ void paint_display(long now, byte temperature, byte humidity) {
   else
     uptime = String(days/30) + String("m");
   display.drawString(0, 34, uptime + String(" v") + String(version));
-  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
+  display.drawString(0, display.getHeight() - 20, String(WiFi.SSID()));
   if (WiFi.status() == WL_CONNECTED) {
-    display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+    display.drawString(0, display.getHeight() - 10, WiFi.localIP().toString());
   } else {
-    display.drawString(0, DISPLAY_HEIGHT - 10, "No wifi connection");
+    display.drawString(0, display.getHeight() - 10, "No wifi connection");
   }
   if(lastReading > 0) {
     display.setColor(INVERSE);
@@ -485,9 +485,9 @@ void setup() {
     display.setColor(INVERSE);
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_10);
-    display.drawString(DISPLAY_WIDTH, 0, WiFi.SSID());
-    display.drawString(DISPLAY_WIDTH, 10, "...or connect to...");
-    display.drawString(DISPLAY_WIDTH, 20, String(ap_name));
+    display.drawString(display.getWidth(), 0, WiFi.SSID());
+    display.drawString(display.getWidth(), 10, "...or connect to...");
+    display.drawString(display.getWidth(), 20, String(ap_name));
     display.display();
   } while (!wifiManager.autoConnect(ap_name));
 
@@ -529,11 +529,11 @@ void setup() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(DISPLAY_WIDTH, DISPLAY_HEIGHT / 2 - 5, String("Connecting to Server"));
+  display.drawString(display.getWidth(), display.getHeight() / 2 - 5, String("Connecting to Server"));
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, DISPLAY_HEIGHT - 20, String(WiFi.SSID()));
-  display.drawString(0, DISPLAY_HEIGHT - 10, WiFi.localIP().toString());
+  display.drawString(0, display.getHeight() - 20, String(WiFi.SSID()));
+  display.drawString(0, display.getHeight() - 10, WiFi.localIP().toString());
   display.display();
 
   client = new PubSubClient(*(new WiFiClient()));
