@@ -43,7 +43,7 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
-#define VERSION "1.20"
+#define VERSION "1.21"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -249,7 +249,7 @@ char *how_good(unsigned int v) {
 }
 
 void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
-  int max = 0;
+  int max = 15;
 
   for (int i = 0; i < points; i++) {
     if (max < a[i]) max = a[i];
