@@ -106,13 +106,13 @@ SSD1306 display(0x3c, 5, 4);
 Servo myservo;
 
 const char* serverIndex = "<html><head><script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
-var sc = new SmoothieChart({ responsive: true, millisPerPixel: 20, labels: { fontSize: 30, precision: 0 }, grid: { fillStyle: '#6699ff', millisPerLine: 100000, verticalSections: 10 }, yRangeFunction: function(r) { return { min: 0, max: Math.max(30, 10*Math.ceil(0.09 * r.max)) } } }); \
+var sc = new SmoothieChart({ responsive: true, millisPerPixel: 20, labels: { fontSize: 30, precision: 0 }, grid: { fillStyle: '#6699ff', millisPerLine: 100000, verticalSections: 10 }, yRangeFunction: function(r) { return { min: 0, max: Math.max(30, 10*Math.ceil(0.11 * r.max)) } } }); \
 var line1 = new TimeSeries(); var line2 = new TimeSeries(); var line3 = new TimeSeries(); \
 sc.addTimeSeries(line1, { strokeStyle:'rgb(180, 50, 0)', fillStyle:'rgba(180, 50, 0, 0.4)', lineWidth:3 }); \
 sc.addTimeSeries(line2, { strokeStyle:'rgb(255, 0, 0)', fillStyle:'rgba(255, 0, 0, 0.4)', lineWidth:3 }); \
 sc.addTimeSeries(line3, { strokeStyle:'rgb(255, 50, 0)', fillStyle:'rgba(255, 50, 0, 0.4)', lineWidth:3 }); \
 $(document).ready(function() { sc.streamTo(document.getElementById('graphcanvas1')); }); \
-setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.a); line2.append(Date.now(), data.pm1); if(data.pm10 < 3*data.pm2) line3.append(Date.now(), data.pm10); }); }, 20); \
+setInterval(function() { $.getJSON('/stats',function(data){ line1.append(Date.now(), data.a); line2.append(Date.now(), data.t); if(data.pm10 < 3*data.pm2) line3.append(Date.now(), data.pm10); }); }, 20); \
 </script></head><body>  <canvas id='graphcanvas1' style='width:100%%; height:75%%;'></canvas><p>Register device <a href='https://geothunk.com/devices?d=%s'>online</a>.</p></body></html>";
 
 t_httpUpdate_return update() {
