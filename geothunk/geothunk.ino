@@ -1,4 +1,4 @@
-//#define SPI_DISPLAY
+#define SPI_DISPLAY
 //#define NO_AUTO_SWAP
 //#define DEBUG
 #ifdef DEBUG
@@ -544,7 +544,7 @@ void setup() {
 
   Serial.printf("ota_password is %s\n", ota_password);
 #ifndef DEBUG
-  ArduinoOTA.setPassword(ota_password);
+  //ArduinoOTA.setPassword(ota_password);
 #endif
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
