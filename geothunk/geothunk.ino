@@ -346,7 +346,7 @@ void measure() {
   while (Serial.available()) {
     value = Serial.read();
 
-#ifdef DEBUG
+#ifdef SERIAL_DEBUG
     Serial.printf("serial[%2d] = %d\n", index, value);
 #endif
 
@@ -376,8 +376,7 @@ void measure() {
   while (Serial.available()) {
     Serial.read();
   }
-
-#ifdef DEBUG
+#ifdef SERIAL_DEBUG
   Serial.printf("\n");
 #endif
 }
