@@ -43,6 +43,8 @@ SimpleDHT11 dht11;
 
 #define MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
+#define LED_PIN D4
+#define PULSE_PIN D8
 #define VERSION "1.21"
 #define POINTS 128
 
@@ -389,6 +391,9 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(PULSE_PIN, OUTPUT);
+  tone(PULSE_PIN, 40);
   WiFi.printDiag(Serial);
   myservo.attach(D0);
 
