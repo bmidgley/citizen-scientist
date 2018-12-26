@@ -15,12 +15,11 @@ Set up [esp8266 runtime](http://esp8266.github.io/Arduino/versions/2.0.0/doc/ins
 Open geothunk.ino in arduino and select board. Tools->Board->NodeMCU 1.0 (ESP-12E Module)
 
 Libraries: sketch->include library->manage libraries
-* WiFiManager
-* ArduinoJson
-* PubSubClient
-* ArduinoOTA
-* SimpleDHT
-* "ESP8266 and ESP32 Oled Driver for SSD1306 display"
+* WiFiManager (0.14.x)
+* ArduinoJson (5.x.x)
+* PubSubClient (2.x.x)
+* SimpleDHT  (1.x.x)
+* "ESP8266 and ESP32 Oled Driver for SSD1306 display" (4.x.x)
 * Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
 
 Plug in board and choose the port. On mac: Tools->Port->/dev/cu.SLAB_USBtoUART (Reboot and check your USB cable is a full power+data cable if the port isn't available.)
