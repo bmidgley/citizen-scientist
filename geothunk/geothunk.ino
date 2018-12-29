@@ -267,7 +267,6 @@ int cycling(long now, int width) {
 }
 
 void paint_display(long now, byte temperature, byte humidity) {
-  float f = 32 + temperature * 9.0 / 5.0;
   String uptime;
   String status = String(how_good(pm2_5));
   int location;
@@ -289,7 +288,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setFont(ArialMT_Plain_10);
   display.drawString(display.getWidth(), 34, String("1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
   display.drawString(display.getWidth(), 44, String(humidity) + String("%h"));
-  display.drawString(display.getWidth(), 54, String(round(f)) + String("°"));
+  display.drawString(display.getWidth(), 54, String(temperature) + String("°C"));
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if (hours < 24)
     uptime = String(hours) + String("h");
