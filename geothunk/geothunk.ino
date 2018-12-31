@@ -28,6 +28,7 @@
 #include <time.h>
 #include <SimpleDHT.h>
 #include <Servo.h>
+#include "PmsSensorReader.h"
 
 int pinDHT11 = D3;
 SimpleDHT11 dht11;
@@ -72,9 +73,6 @@ char error_topic_name[128];
 char ap_name[64];
 char *version = VERSION;
 
-unsigned int pm1 = 0;
-unsigned int pm2_5 = 0;
-unsigned int pm10 = 0;
 byte temperature = 0;
 byte humidity = 0;
 
@@ -101,6 +99,8 @@ int gindex = 0;
 WiFiClientSecure *tcpClient;
 PubSubClient *client;
 ESP8266WebServer *webServer;
+PmsSensorReader pmsSensor;
+
 #ifdef SPI_DISPLAY
 SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #else
@@ -254,7 +254,7 @@ bool dhtOverdue(long now) {
 
 void paint_display(long now) {
   String uptime;
-  String pmStatus = pmOverdue(now) ? String("ERROR ") : String(how_good(pm2_5));
+  String pmStatus = pmOverdue(now) ? String("ERROR ") : String(how_good(pmsSensor.pm2_5));
   int location;
   int width;
   long hours = now / (60 * 60 * 1000);
@@ -280,7 +280,7 @@ void paint_display(long now) {
   if (pmOverdue(now))
     pmValues = pmValues + String("E/E/E");
   else
-    pmValues = pmValues + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10);
+    pmValues = pmValues + String(pmsSensor.pm1) + String("/") + String(pmsSensor.pm2_5) + String("/") + String(pmsSensor.pm10);
 
   if (dhtOverdue(now)) {
     humidityString = String("E");
@@ -312,11 +312,11 @@ void paint_display(long now) {
     graph_set(graph, POINTS, 36, 12, gindex);
     display.setTextAlignment(TEXT_ALIGN_LEFT);
     display.setFont(ArialMT_Plain_24);
-    width = display.getStringWidth(String(pm2_5));
+    width = display.getStringWidth(String(pmsSensor.pm2_5));
     display.setColor(BLACK);
     display.fillRect(0, 0, width + 23, 34);
     display.setColor(WHITE);
-    display.drawString(0, 4, String(pm2_5));
+    display.drawString(0, 4, String(pmsSensor.pm2_5));
     display.setFont(ArialMT_Plain_16);
     display.drawString(width, 0, String("µg"));
     display.drawLine(width + 3, 18, width + 15, 18);
@@ -331,16 +331,13 @@ void handleGPS() {
   if (tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
 }
 
-void measure() {
-  int index = 0;
+void measureDHT() {
   int err = SimpleDHTErrSuccess;
-  char value;
-  char previousValue;
 
   err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
 #ifdef DEBUG
   if(err != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed (%d)\n", err);
+    Serial.printf("Read DHT11 failed t=%d err=%02x\n", err >> 8, err & 0xff);
   }
 #endif
   if (err == SimpleDHTErrSuccess) {
@@ -348,43 +345,6 @@ void measure() {
   }
 
   graph2[gindex] = temperature;
-
-  while (Serial.available()) {
-    value = Serial.read();
-
-#ifdef SERIAL_DEBUG
-    Serial.printf("serial[%2d] = %d\n", index, value);
-#endif
-
-    if ((index == 0 && value != 0x42) || (index == 1 && value != 0x4d)) {
-      break;
-    }
-
-    if (index == 4 || index == 6 || index == 8 || index == 10 || index == 12 || index == 14) {
-      previousValue = value;
-    }
-    else if (index == 5) {
-      pm1 = 256 * previousValue + value;
-    }
-    else if (index == 7) {
-      pm2_5 = 256 * previousValue + value;
-    }
-    else if (index == 9) {
-      pm10 = 256 * previousValue + value;
-      lastPmReading = millis();
-      graph[gindex] = pm2_5;
-      gindex = (gindex + 1) % POINTS;
-    } else if (index > 15) {
-      break;
-    }
-    index++;
-  }
-  while (Serial.available()) {
-    Serial.read();
-  }
-#ifdef SERIAL_DEBUG
-  Serial.printf("\n");
-#endif
 }
 
 void setup() {
@@ -486,7 +446,7 @@ void setup() {
       WiFi.disconnect(true);
     }
 
-    measure();
+    measureDHT();
     paint_display(0);
 
     display.setColor(INVERSE);
@@ -595,6 +555,31 @@ void setup() {
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 }
 
+void pmsSensorLoop(long now) {
+#ifdef DEBUG
+  if (!Serial.available())
+    return;
+
+  Serial.printf("serial: ");
+#endif
+
+  while(Serial.available()) {
+    unsigned char value = Serial.read();
+#ifdef DEBUG
+    Serial.printf("%x ", value);
+#endif
+    if (pmsSensor.offer(value)) {
+      lastPmReading = now;
+      graph[gindex] = pmsSensor.pm2_5;
+      gindex = (gindex + 1) % POINTS;
+    }
+  }
+
+#ifdef DEBUG
+  Serial.printf("\n");
+#endif
+}
+
 void loop() {
   handleGPS();
   ArduinoOTA.handle();
@@ -603,19 +588,20 @@ void loop() {
 
   long now = millis();
   paint_display(now);
+  pmsSensorLoop(now);
 
   if (now - lastSample > sampleGap) {
     lastSample = now;
 
-    measure();
+    measureDHT();
 
-    myservo.write(map(pm2_5, 0, 30, 180, 0));
+    myservo.write(map(pmsSensor.pm2_5, 0, 30, 180, 0));
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
     long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
     snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
-             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, temperature, humidity);
+             pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, temperature, humidity);
 
     *errorMsg = 0;
     if (lastSample - lastPmReading > 30000) {
