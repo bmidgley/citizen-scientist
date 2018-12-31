@@ -57,6 +57,7 @@ long lastReport = 0;
 long lastPmReading = 0;
 long lastDHTReading = 0;
 long lastSwap = 0;
+long nextFrame = 0; // Time at which the next frame should be drawn
 char msg[200] = "";
 char errorMsg[200] = "";
 int disconnects = 0;
@@ -587,8 +588,12 @@ void loop() {
   client->loop();
 
   long now = millis();
-  paint_display(now);
   pmsSensorLoop(now);
+
+  if (now >= nextFrame) {
+    nextFrame = now + 64; // 1000 / 64 = ~15 fps
+    paint_display(now);
+  }
 
   if (now - lastSample > sampleGap) {
     lastSample = now;
