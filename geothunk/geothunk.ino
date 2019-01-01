@@ -197,7 +197,7 @@ void to_degrees(char *begin, char *end, int &whole, int &decimal) {
   decimal = (int)(nmea * ( 10000.0 / 60.0));
 }
 
-int handle_gps_byte(int byteGPS) {
+int handle_gps_byte(char byteGPS) {
   linea[conta] = byteGPS;
   conta++;
   if (byteGPS == 13 || conta >= 300) {
@@ -486,7 +486,7 @@ void setup() {
     saveConfigCallback();
   }
 
-  snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
+  snprintf(ap_name, sizeof(ap_name), "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
   for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
@@ -567,8 +567,8 @@ void setup() {
   }
   tcpClient = new WiFiClientSecure();
   tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
-  snprintf(particle_topic_name, 128, "%s/particles", uuid);
-  snprintf(error_topic_name, 128, "%s/errors", uuid);
+  snprintf(particle_topic_name, sizeof(particle_topic_name), "%s/particles", uuid);
+  snprintf(error_topic_name, sizeof(error_topic_name), "%s/errors", uuid);
 
   Serial.printf("publishing data on %s\n", particle_topic_name);
   Serial.printf("publishing errors on %s\n", error_topic_name);
@@ -601,7 +601,7 @@ void setup() {
     char response[1600];
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    snprintf(response, 1600, serverIndex, uuid);
+    snprintf(response, sizeof(response), serverIndex, uuid);
     webServer->send(200, "text/html", response);
   });
   webServer->on("/stats", HTTP_GET, []() {
@@ -639,12 +639,12 @@ void loop() {
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
     long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
-    snprintf(msg, 200, "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
+    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
              pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, temperature, humidity);
 
     *errorMsg = 0;
     if (lastSample - lastPmReading > 30000) {
-      snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastPmReading\": %u}", lastSample, lastPmReading);
+      snprintf(errorMsg, sizeof(errorMsg), "{\"lastSample\": %u, \"lastPmReading\": %u}", lastSample, lastPmReading);
 #ifndef NO_AUTO_SWAP
       if (now - lastSwap > 60000) {
         Serial.println("swapping from here");
