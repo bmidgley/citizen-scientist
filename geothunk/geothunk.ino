@@ -44,13 +44,15 @@ SimpleDHT11 dht11;
 #define MDNS_NAME "weothunk"
 #define TRIGGER_PIN 0
 #define LED_PIN D4
-#define VERSION "1.21"
+#define PULSE_PIN D8
+#define VERSION "1.22"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
 long lastSample = 0;
 long lastReport = 0;
-long lastReading = 0;
+long lastPmReading = 0;
+long lastDHTReading = 0;
 long lastReconfigure = 0;
 long lastSwap = 0;
 char msg[200] = "";
@@ -78,6 +80,7 @@ unsigned int analog = 0;
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
 int reconfigureGap = 5 * 1000;
+int reportExpectedDurationMs = sampleGap * 5;
 int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[] = "$GPRMC";
@@ -195,7 +198,7 @@ void to_degrees(char *begin, char *end, int &whole, int &decimal) {
   decimal = (int)(nmea * ( 10000.0 / 60.0));
 }
 
-int handle_gps_byte(int byteGPS) {
+int handle_gps_byte(char byteGPS) {
   linea[conta] = byteGPS;
   conta++;
   if (byteGPS == 13 || conta >= 300) {
@@ -266,10 +269,17 @@ int cycling(long now, int width) {
   return -(now/64 % width);
 }
 
-void paint_display(long now, byte temperature, byte humidity) {
-  float f = 32 + temperature * 9.0 / 5.0;
+bool pmOverdue(long now) {
+  return (now - lastPmReading) > reportExpectedDurationMs;
+}
+
+bool dhtOverdue(long now) {
+  return (now - lastDHTReading) > reportExpectedDurationMs;
+}
+
+void paint_display(long now) {
   String uptime;
-  String status = String(how_good(pm2_5));
+  String pmStatus = pmOverdue(now) ? String("ERROR ") : String(how_good(pm2_5));
   int location;
   int width;
   long hours = now / (60 * 60 * 1000);
@@ -282,16 +292,34 @@ void paint_display(long now, byte temperature, byte humidity) {
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_24);
   if (now > 0) {
-    width = display.getStringWidth(status);
+    width = display.getStringWidth(pmStatus);
     location = cycling(now, width);
-    display.drawString(location, 0, status);
-    display.drawString(location + width, 0, status);
+    display.drawString(location, 0, pmStatus);
+    display.drawString(location + width, 0, pmStatus);
   }
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(display.getWidth(), 34, String("1/2/10=") + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10));
-  display.drawString(display.getWidth(), 44, String(humidity) + String("%h"));
-  display.drawString(display.getWidth(), 54, String(round(f)) + String("°"));
+
+  String pmValues = String("1/2/10=");
+  String humidityString;
+  String temperatureString;
+
+  if (pmOverdue(now))
+    pmValues = pmValues + String("E/E/E");
+  else
+    pmValues = pmValues + String(pm1) + String("/") + String(pm2_5) + String("/") + String(pm10);
+
+  if (dhtOverdue(now)) {
+    humidityString = String("E");
+    temperatureString = String("E");
+  } else {
+    humidityString = String(humidity);
+    temperatureString = String(temperature);
+  }
+  display.drawString(display.getWidth(), 34, pmValues);
+  display.drawString(display.getWidth(), 44, humidityString + String("%h"));
+  display.drawString(display.getWidth(), 54, temperatureString + String("°C"));
+
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   if (hours < 24)
     uptime = String(hours) + String("h");
@@ -306,7 +334,7 @@ void paint_display(long now, byte temperature, byte humidity) {
   } else {
     display.drawString(0, display.getHeight() - 10, "No wifi connection");
   }
-  if(lastReading > 0) {
+  if(lastPmReading > 0) {
     display.setColor(INVERSE);
     graph_set(graph, POINTS, 36, 12, gindex);
     display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -342,9 +370,11 @@ void measure() {
     Serial.printf("Read DHT11 failed, err=%d\n", err);
   }
 #endif
+  if (err == SimpleDHTErrSuccess) {
+    lastDHTReading = millis();
+  }
 
   analog = analogRead(A0);
-  lastReading = millis();
 
   graph2[gindex] = temperature;
 
@@ -352,7 +382,7 @@ void measure() {
     while (Serial.available()) {
       value = Serial.read();
 
-#ifdef DEBUG
+#ifdef SERIAL_DEBUG
       Serial.printf("serial[%2d] = %d\n", index, value);
 #endif
 
@@ -371,7 +401,7 @@ void measure() {
       }
       else if (index == 9) {
         pm10 = 256 * previousValue + value;
-        lastReading = millis();
+        lastPmReading = millis();
         graph[gindex] = pm2_5;
         gindex = (gindex + 1) % POINTS;
       } else if (index > 15) {
@@ -379,13 +409,13 @@ void measure() {
       }
       index++;
     }
-#ifdef DEBUG
-    Serial.printf("\n");
-#endif
-    while (Serial.available()) {
-      Serial.read();
-    }
   }
+  while (Serial.available()) {
+    Serial.read();
+  }
+#ifdef SERIAL_DEBUG
+  Serial.printf("\n");
+#endif
 }
 
 void setup() {
@@ -398,13 +428,12 @@ void setup() {
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(PULSE_PIN, OUTPUT);
+  tone(PULSE_PIN, 40);
   WiFi.printDiag(Serial);
   myservo.attach(D0);
 
   display.init();
-#ifndef SPI_DISPLAY
-  display.flipScreenVertically();
-#endif
   display.setContrast(255);
   display.clear();
 
@@ -464,7 +493,7 @@ void setup() {
     saveConfigCallback();
   }
 
-  snprintf(ap_name, 64, "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
+  snprintf(ap_name, sizeof(ap_name), "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
   for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
@@ -480,7 +509,7 @@ void setup() {
     }
 
     measure();
-    paint_display(0, temperature, humidity);
+    paint_display(0);
 
     display.setColor(INVERSE);
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
@@ -545,8 +574,8 @@ void setup() {
   }
   tcpClient = new WiFiClientSecure();
   tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
-  snprintf(particle_topic_name, 128, "%s/particles", uuid);
-  snprintf(error_topic_name, 128, "%s/errors", uuid);
+  snprintf(particle_topic_name, sizeof(particle_topic_name), "%s/particles", uuid);
+  snprintf(error_topic_name, sizeof(error_topic_name), "%s/errors", uuid);
 
   Serial.printf("publishing data on %s\n", particle_topic_name);
   Serial.printf("publishing errors on %s\n", error_topic_name);
@@ -579,7 +608,7 @@ void setup() {
     char response[1600];
     webServer->sendHeader("Connection", "close");
     webServer->sendHeader("Access-Control-Allow-Origin", "*");
-    snprintf(response, 1600, serverIndex, uuid);
+    snprintf(response, sizeof(response), serverIndex, uuid);
     webServer->send(200, "text/html", response);
   });
   webServer->on("/stats", HTTP_GET, []() {
@@ -599,7 +628,7 @@ void loop() {
   client->loop();
 
   long now = millis();
-  paint_display(now, temperature, humidity);
+  paint_display(now);
 
   if(now - lastReconfigure > reconfigureGap) {
     lastReconfigure = now;
@@ -616,12 +645,13 @@ void loop() {
 
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
-    snprintf(msg, 200, "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d,\"a\":%u}",
-             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, lastReading / 60000, temperature, humidity, analog);
+    long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
+    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
+             pm2_5, pm1, pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, temperature, humidity);
 
     *errorMsg = 0;
-    if (lastSample - lastReading > 30000) {
-      snprintf(errorMsg, 200, "{\"lastSample\": %u, \"lastReading\": %u}", lastSample, lastReading);
+    if (lastSample - lastPmReading > 30000) {
+      snprintf(errorMsg, sizeof(errorMsg), "{\"lastSample\": %u, \"lastPmReading\": %u}", lastSample, lastPmReading);
 #ifndef NO_AUTO_SWAP
       if (now - lastSwap > 60000) {
         Serial.println("swapping from here");
