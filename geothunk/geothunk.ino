@@ -1,4 +1,5 @@
 //#define SPI_DISPLAY
+//#define SH1106_DISPLAY
 //#define NO_AUTO_SWAP
 //#define DEBUG
 #ifdef DEBUG
@@ -16,6 +17,7 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include "SSD1306Spi.h"
+#include "SH1106.h"
 #include "SSD1306.h"
 #include "ESP8266TrueRandom.h"
 #include <ArduinoJson.h>
@@ -41,11 +43,11 @@ SimpleDHT11 dht11;
 // or
 // mv ESP8266TrueRandom-master ~/Arduino/libraries/
 
-#define MDNS_NAME "geothunk"
+#define DEFAULT_MDNS_NAME "geothunk"
 #define TRIGGER_PIN 0
 #define LED_PIN D4
 #define PULSE_PIN D8
-#define VERSION "1.21"
+#define VERSION "1.23"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -53,7 +55,6 @@ long lastSample = 0;
 long lastReport = 0;
 long lastPmReading = 0;
 long lastDHTReading = 0;
-long lastReconfigure = 0;
 long lastSwap = 0;
 char msg[200] = "";
 char errorMsg[200] = "";
@@ -64,6 +65,7 @@ char mqtt_port[6] = "8080";
 char uuid[64] = "";
 char gps_port[10] = "";
 char ota_password[10] = "";
+char mdns_name[40] = DEFAULT_MDNS_NAME;
 
 char particle_topic_name[128];
 char error_topic_name[128];
@@ -78,7 +80,6 @@ byte humidity = 0;
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
-int reconfigureGap = 5 * 1000;
 int reportExpectedDurationMs = sampleGap * 5;
 int byteGPS = -1;
 char linea[300] = "";
@@ -103,7 +104,11 @@ ESP8266WebServer *webServer;
 #ifdef SPI_DISPLAY
 SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #else
+#ifdef SH1106_DISPLAY
+SH1106 display(0x3c, D1, D2);
+#else
 SSD1306 display(0x3c, 5, 4);
+#endif
 #endif
 Servo myservo;
 
@@ -155,35 +160,6 @@ int mqttConnect() {
 
 void saveConfigCallback () {
   shouldSaveConfig = true;
-}
-
-void check_for_reconfigure() {
-  static int reconfigure_counter = 0;
-
-  if ( digitalRead(TRIGGER_PIN) == LOW ) {
-    if (reconfigure_counter > 0) {
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(display.getWidth() / 2, display.getHeight() / 2 - 10, String("Hold to clear settings"));
-      display.drawString(display.getWidth() / 2, display.getHeight() / 2, String(3 - reconfigure_counter));
-      display.display();
-    }
-
-    reconfigure_counter++;
-    if (reconfigure_counter > 2) {
-      WiFi.disconnect(true);
-
-      display.clear();
-      display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(display.getWidth() / 2, display.getHeight() / 2 - 10, String("Release and tap reset"));
-      display.display();
-    }
-    return;
-  } else {
-    reconfigure_counter = 0;
-  }
 }
 
 void to_degrees(char *begin, char *end, int &whole, int &decimal) {
@@ -364,7 +340,7 @@ void measure() {
   err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
 #ifdef DEBUG
   if(err != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed, err=%d", err);
+    Serial.printf("Read DHT11 failed (%d)\n", err);
   }
 #endif
   if (err == SimpleDHTErrSuccess) {
@@ -413,7 +389,6 @@ void measure() {
 
 void setup() {
   WiFiManager wifiManager;
-  bool create_ota_password = true;
   byte uuidNumber[16];
   byte uuidCode[16];
 
@@ -451,17 +426,16 @@ void setup() {
         JsonObject& json = jsonBuffer.parseObject(buf.get());
         json.printTo(Serial);
         if (json.success()) {
+#ifdef DEBUG
           Serial.println("\nparsed json");
+#endif
 
-          if (json["mqtt_server"]) strcpy(mqtt_server, json["mqtt_server"]);
-          if (json["mqtt_port"]) strcpy(mqtt_port, json["mqtt_port"]);
-          if (json["uuid"]) strcpy(uuid, json["uuid"]);
-          if (json["gps_port"]) strcpy(gps_port, json["gps_port"]);
-          if (json["ota_password"]) {
-            strcpy(ota_password, json["ota_password"]);
-            create_ota_password = false;
-          }
-
+          if (json["mqtt_server"]) strncpy(mqtt_server, json["mqtt_server"], sizeof(mqtt_server));
+          if (json["mqtt_port"]) strncpy(mqtt_port, json["mqtt_port"], sizeof(mqtt_port));
+          if (json["mdns_name"]) strncpy(mdns_name, json["mdns_name"], sizeof(mdns_name));
+          if (json["gps_port"]) strncpy(gps_port, json["gps_port"], sizeof(gps_port));
+          if (json["ota_password"]) strncpy(ota_password, json["ota_password"], sizeof(ota_password));
+          if (json["uuid"]) strncpy(uuid, json["uuid"], sizeof(uuid));
         } else {
           Serial.println("failed to load json config");
         }
@@ -473,19 +447,27 @@ void setup() {
 
   Serial.println("loaded config");
 
-  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
-  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 6);
-  WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, 10);
-  WiFiManagerParameter custom_ota_password("ota_password", "OTA password (optional)", ota_password, 6);
+  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, sizeof(mqtt_server));
+  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, sizeof(mqtt_port));
+  WiFiManagerParameter custom_mdns_name("name", "Hostname (optional)", mdns_name, sizeof(mdns_name));
+  WiFiManagerParameter custom_gps_port("gps_port", "GPS server port (optional)", gps_port, sizeof(gps_port));
+  WiFiManagerParameter custom_ota_password("ota_password", "OTA password (optional)", ota_password, sizeof(ota_password));
 
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&custom_mqtt_server);
   wifiManager.addParameter(&custom_mqtt_port);
+  wifiManager.addParameter(&custom_mdns_name);
   wifiManager.addParameter(&custom_gps_port);
-  if (create_ota_password) {
+  if (*ota_password == 0) {
     Serial.println("generating ota_password");
     wifiManager.addParameter(&custom_ota_password);
+    saveConfigCallback();
+  }
+  if (*uuid == 0) {
+    Serial.println("generating uuid");
+    ESP8266TrueRandom.uuid(uuidNumber);
+    ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
     saveConfigCallback();
   }
 
@@ -522,13 +504,8 @@ void setup() {
 
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
+  strncpy(mdns_name, custom_mdns_name.getValue(), sizeof(mdns_name));
   strcpy(gps_port, custom_gps_port.getValue());
-  if (uuid == NULL || *uuid == 0) {
-    Serial.println("generating uuid");
-    ESP8266TrueRandom.uuid(uuidNumber);
-    ESP8266TrueRandom.uuidToString(uuidNumber).toCharArray(uuid, 64);
-    saveConfigCallback();
-  }
 
   if (shouldSaveConfig) {
     Serial.println("saving config");
@@ -536,9 +513,10 @@ void setup() {
     JsonObject& json = jsonBuffer.createObject();
     json["mqtt_server"] = mqtt_server;
     json["mqtt_port"] = mqtt_port;
-    json["uuid"] = uuid;
+    json["mdns_name"] = mdns_name;
     json["gps_port"] = gps_port;
     json["ota_password"] = ota_password;
+    json["uuid"] = uuid;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -594,7 +572,7 @@ void setup() {
   });
   ArduinoOTA.begin();
 
-  MDNS.begin(MDNS_NAME);
+  MDNS.begin(mdns_name);
   MDNS.addService("http", "tcp", 80);
   webServer = new ESP8266WebServer(80);
   webServer->onNotFound([]() {
@@ -625,12 +603,6 @@ void loop() {
 
   long now = millis();
   paint_display(now);
-
-  if(now - lastReconfigure > reconfigureGap) {
-    lastReconfigure = now;
-
-    check_for_reconfigure();
-  }
 
   if (now - lastSample > sampleGap) {
     lastSample = now;
