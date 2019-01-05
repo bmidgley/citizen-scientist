@@ -45,7 +45,7 @@ SimpleDHT11 dht11;
 #define TRIGGER_PIN 0
 #define LED_PIN D4
 #define PULSE_PIN D8
-#define VERSION "1.22"
+#define VERSION "1.21"
 #define POINTS 128
 
 bool shouldSaveConfig = false;
@@ -427,6 +427,9 @@ void setup() {
   myservo.attach(D0);
 
   display.init();
+#ifndef SPI_DISPLAY
+  display.flipScreenVertically();
+#endif
   display.setContrast(255);
   display.clear();
 
