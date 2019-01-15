@@ -254,6 +254,9 @@ void setup() {
   byte uuidNumber[16];
   byte uuidCode[16];
 
+  airData.pmStatus = AirData_Uninitialized;
+  airData.tempHumidityStatus = AirData_Uninitialized;
+
   Serial.begin(9600);
   Serial.println("\n Starting");
   pinMode(TRIGGER_PIN, INPUT);

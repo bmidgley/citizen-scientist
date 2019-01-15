@@ -85,12 +85,17 @@ void Presentation::paintDisplay(long now) {
 
   if (airData->pmStatus == AirData_Stale)
     pmValues = pmValues + String("E/E/E");
+  else if (airData->pmStatus == AirData_Uninitialized)
+    pmValues = pmValues + String("-/-/-");
   else
     pmValues = pmValues + String(airData->pm1) + String("/") + String(airData->pm2_5) + String("/") + String(airData->pm10);
 
   if (airData->tempHumidityStatus == AirData_Stale) {
     humidityString = String("E");
     temperatureString = String("E");
+  } else if (airData->tempHumidityStatus == AirData_Uninitialized) {
+    humidityString = String("-");
+    temperatureString = String("-");
   } else {
     humidityString = String(airData->humidity);
     temperatureString = String(airData->temperature);
