@@ -13,8 +13,9 @@ private:
 public:
   Presentation(OLEDDisplay *display, AirData *airdata);
   void paintDisplay(long now);
-  void paintConnectingWifi(String ap_name);
-  void paintConnectingMqtt();
+  void paintConnectingWifi();
+  void paintServingAp(String ap_name);
+  void paintConnectingMqtt(long now);
   void recordGraphTemperature();
   void recordGraphPm2();
   OLEDDisplay *display;

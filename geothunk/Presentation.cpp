@@ -34,20 +34,32 @@ void Presentation::graphSet(unsigned short int *a, int points, int p0, int p1, i
   }
 }
 
-void Presentation::paintConnectingWifi(String ap_name) {
+void Presentation::paintConnectingWifi() {
   this->paintDisplay(0);
 
   display->setColor(INVERSE);
   display->setTextAlignment(TEXT_ALIGN_RIGHT);
   display->setFont(ArialMT_Plain_10);
-  display->drawString(display->getWidth(), 0, WiFi.SSID());
-  display->drawString(display->getWidth(), 10, "...or connect to...");
+  display->drawString(display->getWidth(), 0, "Connecting to WIFI...");
+  display->drawString(display->getWidth(), 20, WiFi.SSID());
+  display->display();
+}
+
+void Presentation::paintServingAp(String ap_name) {
+  this->paintDisplay(0);
+
+  display->setColor(INVERSE);
+  display->setTextAlignment(TEXT_ALIGN_RIGHT);
+  display->setFont(ArialMT_Plain_10);
+  display->drawString(display->getWidth(), 0, "Configure this device");
+  display->drawString(display->getWidth(), 10, "by connecting to");
   display->drawString(display->getWidth(), 20, ap_name);
   display->display();
 }
 
-void Presentation::paintConnectingMqtt() {
-  display->clear();
+void Presentation::paintConnectingMqtt(long now) {
+  this->paintDisplay(now);
+  display->setColor(INVERSE);
   display->setTextAlignment(TEXT_ALIGN_RIGHT);
   display->setFont(ArialMT_Plain_10);
   display->drawString(display->getWidth(), display->getHeight() / 2 - 5, String("Connecting to Server"));

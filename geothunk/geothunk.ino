@@ -70,7 +70,7 @@ char mdns_name[40] = DEFAULT_MDNS_NAME;
 
 char particle_topic_name[128];
 char error_topic_name[128];
-char ap_name[64];
+char ap_name[64] = "";
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
@@ -249,6 +249,10 @@ void measureDHT() {
   presentation.recordGraphTemperature();
 }
 
+void setup_apStartedCallback(WiFiManager* wifiManager) {
+  presentation.paintServingAp(String(ap_name));
+}
+
 void setup() {
   WiFiManager wifiManager;
   byte uuidNumber[16];
@@ -344,13 +348,16 @@ void setup() {
 #endif
 
   wifiManager.setTimeout(600);
+  wifiManager.setAPCallback(setup_apStartedCallback);
+
+  presentation.paintConnectingWifi();
+
   do {
     if ( digitalRead(TRIGGER_PIN) == LOW ) {
       WiFi.disconnect(true);
     }
 
     measureDHT();
-    presentation.paintConnectingWifi(String(ap_name));
 
   } while (!wifiManager.autoConnect(ap_name));
 
