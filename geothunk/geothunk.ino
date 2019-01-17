@@ -352,6 +352,7 @@ void setup() {
 
   presentation.paintConnectingWifi();
 
+  digitalWrite(LED_PIN, LOW);
   do {
     if ( digitalRead(TRIGGER_PIN) == LOW ) {
       WiFi.disconnect(true);
@@ -362,6 +363,7 @@ void setup() {
   } while (!wifiManager.autoConnect(ap_name));
 
   Serial.println("stored wifi connected");
+  digitalWrite(LED_PIN, HIGH);
 
   WiFi.setAutoConnect(true);
 
@@ -392,7 +394,7 @@ void setup() {
     configFile.close();
   }
 
-  presentation.paintConnectingMqtt();
+  presentation.paintConnectingMqtt(millis());
 
   client = new PubSubClient(*(new WiFiClient()));
   client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
