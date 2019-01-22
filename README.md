@@ -35,6 +35,7 @@ Register and agree to share your data with our [agreement](https://docs.google.c
 ## Contributors
 
 * Brad Midgley wrote the firmware and built the sensor
+* Tim Harper updated the firmware with refactors, overflow protection, improved sensor listener
 * Dorian Tolman designed the case
 
 Parts:
