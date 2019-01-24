@@ -405,7 +405,7 @@ void setup() {
     Serial.println("failed to mount FS");
   }
 
-  Serial.println("loaded config");
+  Serial.println("\nloaded config");
 
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, sizeof(mqtt_server));
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, sizeof(mqtt_port));
