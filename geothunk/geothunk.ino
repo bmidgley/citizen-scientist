@@ -29,6 +29,7 @@
 #include <SimpleDHT.h>
 #include <Servo.h>
 #include "PmsSensorReader.h"
+#include "Presentation.h"
 
 int pinDHT11 = D3;
 SimpleDHT11 dht11;
@@ -48,8 +49,6 @@ SimpleDHT11 dht11;
 #define TRIGGER_PIN 0
 #define LED_PIN D4
 #define PULSE_PIN D8
-#define VERSION "1.23"
-#define POINTS 128
 
 bool shouldSaveConfig = false;
 long lastSample = 0;
@@ -57,6 +56,7 @@ long lastReport = 0;
 long lastPmReading = 0;
 long lastDHTReading = 0;
 long lastSwap = 0;
+long nextFrame = 0; // Time at which the next frame should be drawn
 char msg[200] = "";
 char errorMsg[200] = "";
 int disconnects = 0;
@@ -70,11 +70,7 @@ char mdns_name[40] = DEFAULT_MDNS_NAME;
 
 char particle_topic_name[128];
 char error_topic_name[128];
-char ap_name[64];
-char *version = VERSION;
-
-byte temperature = 0;
-byte humidity = 0;
+char ap_name[64] = "";
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
@@ -92,9 +88,6 @@ int latf = 0;
 int lngs = 1;
 int lngw = 0;
 int lngf = 0;
-unsigned short int graph[POINTS];
-unsigned short int graph2[POINTS];
-int gindex = 0;
 
 WiFiClientSecure *tcpClient;
 PubSubClient *client;
@@ -110,6 +103,9 @@ SH1106 display(0x3c, D1, D2);
 SSD1306 display(0x3c, 5, 4);
 #endif
 #endif
+
+AirData airData;
+Presentation presentation(&display, &airData);
 Servo myservo;
 
 const char* serverIndex = "<html><head><script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.js'></script> <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script> <script type='text/Javascript'> \
@@ -219,31 +215,6 @@ int handle_gps_byte(char byteGPS) {
   }
 }
 
-char *how_good(unsigned int v) {
-  if (v == 0) return "Air quality seems perfect ";
-  if (v < 8) return "Air quality is good ";
-  if (v < 15) return "Air quality is fair ";
-  if (v < 30) return "Air quality is bad ";
-  if (v < 50) return "Air quality is very bad ";
-  return "Air quality is dangerous ";
-}
-
-void graph_set(unsigned short int *a, int points, int p0, int p1, int idx) {
-  int max = 15;
-
-  for (int i = 0; i < points; i++) {
-    if (max < a[i]) max = a[i];
-  }
-  if (max > 0) {
-    for (int i = 0; i < points; i++)
-      display.drawLine(i, p0, i, p0 - ((p0-p1) * a[(i + idx) % points] / max));
-  }
-}
-
-int cycling(long now, int width) {
-  return -(now/64 % width);
-}
-
 bool pmOverdue(long now) {
   return (now - lastPmReading) > reportExpectedDurationMs;
 }
@@ -252,80 +223,7 @@ bool dhtOverdue(long now) {
   return (now - lastDHTReading) > reportExpectedDurationMs;
 }
 
-void paint_display(long now) {
-  String uptime;
-  String pmStatus = pmOverdue(now) ? String("ERROR ") : String(how_good(pmsSensor.pm2_5));
-  int location;
-  int width;
-  long hours = now / (60 * 60 * 1000);
-  long days = hours / 24;
 
-  display.clear();
-  display.setColor(WHITE);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_24);
-  if (now > 0) {
-    width = display.getStringWidth(pmStatus);
-    location = cycling(now, width);
-    display.drawString(location, 0, pmStatus);
-    display.drawString(location + width, 0, pmStatus);
-  }
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.setFont(ArialMT_Plain_10);
-
-  String pmValues = String("1/2/10=");
-  String humidityString;
-  String temperatureString;
-
-  if (pmOverdue(now))
-    pmValues = pmValues + String("E/E/E");
-  else
-    pmValues = pmValues + String(pmsSensor.pm1) + String("/") + String(pmsSensor.pm2_5) + String("/") + String(pmsSensor.pm10);
-
-  if (dhtOverdue(now)) {
-    humidityString = String("E");
-    temperatureString = String("E");
-  } else {
-    humidityString = String(humidity);
-    temperatureString = String(temperature);
-  }
-  display.drawString(display.getWidth(), 34, pmValues);
-  display.drawString(display.getWidth(), 44, humidityString + String("%h"));
-  display.drawString(display.getWidth(), 54, temperatureString + String("°C"));
-
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  if (hours < 24)
-    uptime = String(hours) + String("h");
-  else if(days < 30)
-    uptime = String(days) + String("d");
-  else
-    uptime = String(days/30) + String("m");
-  display.drawString(0, 34, uptime + String(" v") + String(version));
-  display.drawString(0, display.getHeight() - 20, String(WiFi.SSID()));
-  if (WiFi.status() == WL_CONNECTED) {
-    display.drawString(0, display.getHeight() - 10, WiFi.localIP().toString());
-  } else {
-    display.drawString(0, display.getHeight() - 10, "No wifi connection");
-  }
-  if(lastPmReading > 0) {
-    display.setColor(INVERSE);
-    graph_set(graph, POINTS, 36, 12, gindex);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_24);
-    width = display.getStringWidth(String(pmsSensor.pm2_5));
-    display.setColor(BLACK);
-    display.fillRect(0, 0, width + 23, 34);
-    display.setColor(WHITE);
-    display.drawString(0, 4, String(pmsSensor.pm2_5));
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(width, 0, String("µg"));
-    display.drawLine(width + 3, 18, width + 15, 18);
-    display.drawString(width + 2, 17, String("m³"));
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(0, 24, "2.5");
-  }
-  display.display();
-}
 
 void handleGPS() {
   if (tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
@@ -334,6 +232,7 @@ void handleGPS() {
 void measureDHT() {
   int err = SimpleDHTErrSuccess;
 
+  byte temperature, humidity;
   err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
 #ifdef DEBUG
   if(err != SimpleDHTErrSuccess) {
@@ -342,15 +241,25 @@ void measureDHT() {
 #endif
   if (err == SimpleDHTErrSuccess) {
     lastDHTReading = millis();
+    airData.humidity = humidity;
+    airData.temperature = temperature;
+    airData.tempHumidityStatus = AirData_Ok;
   }
 
-  graph2[gindex] = temperature;
+  presentation.recordGraphTemperature();
+}
+
+void setup_apStartedCallback(WiFiManager* wifiManager) {
+  presentation.paintServingAp(String(ap_name));
 }
 
 void setup() {
   WiFiManager wifiManager;
   byte uuidNumber[16];
   byte uuidCode[16];
+
+  airData.pmStatus = AirData_Uninitialized;
+  airData.tempHumidityStatus = AirData_Uninitialized;
 
   Serial.begin(9600);
   Serial.println("\n Starting");
@@ -434,31 +343,27 @@ void setup() {
   snprintf(ap_name, sizeof(ap_name), "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
   Serial.printf("autoconnect with AP name %s\n", ap_name);
 
-  for (gindex = POINTS - 1; gindex > 0; gindex--) graph[gindex] = graph2[gindex] = 0;
-
 #ifndef NO_AUTO_SWAP
   Serial.swap();
 #endif
 
   wifiManager.setTimeout(600);
+  wifiManager.setAPCallback(setup_apStartedCallback);
+
+  presentation.paintConnectingWifi();
+
+  digitalWrite(LED_PIN, LOW);
   do {
     if ( digitalRead(TRIGGER_PIN) == LOW ) {
       WiFi.disconnect(true);
     }
 
     measureDHT();
-    paint_display(0);
 
-    display.setColor(INVERSE);
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(display.getWidth(), 0, WiFi.SSID());
-    display.drawString(display.getWidth(), 10, "...or connect to...");
-    display.drawString(display.getWidth(), 20, String(ap_name));
-    display.display();
   } while (!wifiManager.autoConnect(ap_name));
 
   Serial.println("stored wifi connected");
+  digitalWrite(LED_PIN, HIGH);
 
   WiFi.setAutoConnect(true);
 
@@ -489,15 +394,7 @@ void setup() {
     configFile.close();
   }
 
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(display.getWidth(), display.getHeight() / 2 - 5, String("Connecting to Server"));
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, display.getHeight() - 20, String(WiFi.SSID()));
-  display.drawString(0, display.getHeight() - 10, WiFi.localIP().toString());
-  display.display();
+  presentation.paintConnectingMqtt(millis());
 
   client = new PubSubClient(*(new WiFiClient()));
   client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
@@ -570,8 +467,11 @@ void pmsSensorLoop(long now) {
 #endif
     if (pmsSensor.offer(value)) {
       lastPmReading = now;
-      graph[gindex] = pmsSensor.pm2_5;
-      gindex = (gindex + 1) % POINTS;
+      airData.pm1 = pmsSensor.pm1;
+      airData.pm2_5 = pmsSensor.pm2_5;
+      airData.pm10 = pmsSensor.pm10;
+      airData.pmStatus = AirData_Ok;
+      presentation.recordGraphPm2();
     }
   }
 
@@ -587,8 +487,24 @@ void loop() {
   client->loop();
 
   long now = millis();
-  paint_display(now);
   pmsSensorLoop(now);
+
+  if (now >= nextFrame) {
+    if (dhtOverdue(now)) {
+      airData.tempHumidityStatus = AirData_Stale;
+    } else {
+      airData.tempHumidityStatus = AirData_Ok;
+    }
+
+    if (pmOverdue(now)) {
+      airData.pmStatus = AirData_Stale;
+    } else {
+      airData.pmStatus = AirData_Ok;
+    }
+
+    nextFrame = now + 64; // 1000 / 64 = ~15 fps
+    presentation.paintDisplay(now);
+  }
 
   if (now - lastSample > sampleGap) {
     lastSample = now;
@@ -601,7 +517,7 @@ void loop() {
 
     long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
     snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
-             pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, temperature, humidity);
+             pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, airData.temperature, airData.humidity);
 
     *errorMsg = 0;
     if (lastSample - lastPmReading > 30000) {
