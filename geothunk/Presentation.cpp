@@ -134,8 +134,11 @@ void Presentation::paintDisplay(long now) {
     humidityString = String("-");
     temperatureString = String("-");
   } else {
-    humidityString = String(airData->humidity);
-    temperatureString = String(airData->temperature);
+    char format_buffer[10];
+    snprintf(format_buffer, sizeof(format_buffer), "%0.0f", airData->humidity);
+    humidityString = String(format_buffer);
+    snprintf(format_buffer, sizeof(format_buffer), "%0.1f", airData->temperature);
+    temperatureString = String(format_buffer);
   }
   display->drawString(display->getWidth(), 34, pmValues);
   display->drawString(display->getWidth(), 44, humidityString + String("%h"));

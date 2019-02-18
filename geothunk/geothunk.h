@@ -8,8 +8,8 @@ struct AirData {
   unsigned int pm10;
   enum AirDataStatus pmStatus;
 
-  byte temperature;
-  byte humidity;
+  float temperature;
+  float humidity;
 
   enum AirDataStatus tempHumidityStatus;
 };
