@@ -65,8 +65,9 @@ void Presentation::paintConnectingWifi() {
   display->setColor(INVERSE);
   display->setTextAlignment(TEXT_ALIGN_RIGHT);
   display->setFont(ArialMT_Plain_10);
-  display->drawString(display->getWidth(), 0, "Connecting to WIFI...");
-  display->drawString(display->getWidth(), 20, WiFi.SSID());
+  display->drawString(display->getWidth(), 0, "Connecting to WIFI:");
+  display->drawString(display->getWidth(), 10, WiFi.SSID());
+  display->drawString(display->getWidth(), 20, "Hold Flash now to config");
   display->display();
 }
 
