@@ -31,8 +31,12 @@
 #include "PmsSensorReader.h"
 #include "Presentation.h"
 
-int pinDHT11 = D3;
-SimpleDHT11 dht11;
+int pinDHT = D3;
+#ifdef DHT22
+SimpleDHT22 dht(pinDHT);
+#else
+SimpleDHT11 dht(pinDHT);
+#endif
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
@@ -232,11 +236,16 @@ void handleGPS() {
 void measureDHT() {
   int err = SimpleDHTErrSuccess;
 
-  byte temperature, humidity;
-  err = dht11.read(pinDHT11, &temperature, &humidity, NULL);
+  float temperature, humidity = 0;
+  err = dht.read2(&temperature, &humidity, NULL);
 #ifdef DEBUG
   if(err != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHT11 failed t=%d err=%02x\n", err >> 8, err & 0xff);
+    Serial.printf("Read DHTxx failed t=%d err=%02x\n", err >> 8, err & 0xff);
+  } else {
+    Serial.print("Sample OK: ");
+    Serial.print((float)temperature); Serial.print(" *C, ");
+    Serial.print((float)humidity); Serial.println(" RH%");
+    Serial.println();
   }
 #endif
   if (err == SimpleDHTErrSuccess) {
@@ -516,7 +525,7 @@ void loop() {
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
     long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
-    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%d,\"h\":%d}",
+    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%0.1f,\"h\":%0.1f}",
              pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, airData.temperature, airData.humidity);
 
     *errorMsg = 0;
