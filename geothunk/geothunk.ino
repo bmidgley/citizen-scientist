@@ -299,12 +299,12 @@ void setup() {
           Serial.println("\nparsed json");
 #endif
 
-          if (json["mqtt_server"]) strncpy(mqtt_server, json["mqtt_server"], sizeof(mqtt_server));
-          if (json["mqtt_port"]) strncpy(mqtt_port, json["mqtt_port"], sizeof(mqtt_port));
-          if (json["mdns_name"]) strncpy(mdns_name, json["mdns_name"], sizeof(mdns_name));
-          if (json["gps_port"]) strncpy(gps_port, json["gps_port"], sizeof(gps_port));
-          if (json["ota_password"]) strncpy(ota_password, json["ota_password"], sizeof(ota_password));
-          if (json["uuid"]) strncpy(uuid, json["uuid"], sizeof(uuid));
+          if (json.is<char*>("mqtt_server")) strncpy(mqtt_server, json["mqtt_server"].as<char*>(), sizeof(mqtt_server));
+          if (json.is<char*>("mqtt_port")) strncpy(mqtt_port, json["mqtt_port"].as<char*>(), sizeof(mqtt_port));
+          if (json.is<char*>("mdns_name")) strncpy(mdns_name, json["mdns_name"].as<char*>(), sizeof(mdns_name));
+          if (json.is<char*>("gps_port")) strncpy(gps_port, json["gps_port"].as<char*>(), sizeof(gps_port));
+          if (json.is<char*>("ota_password")) strncpy(ota_password, json["ota_password"].as<char*>(), sizeof(ota_password));
+          if (json.is<char*>("uuid")) strncpy(uuid, json["uuid"].as<char*>(), sizeof(uuid));
         } else {
           Serial.println("failed to load json config");
         }
