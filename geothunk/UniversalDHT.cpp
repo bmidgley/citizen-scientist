@@ -141,7 +141,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
   //    1. PULL LOW 80us
   //    2. PULL HIGH 80us
   waitWhileValue(pin, LOW);
-  int t = advance(lf, nf);;
+  int t = advance(lf, nf);
   if (t < 30) {                    // specs [2]: 80us
     ret.time = t;
     ret.error = errStartLow;
@@ -163,7 +163,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
   //    2. PULL HIGH:
   //         - 26-28us, bit(0)
   //         - 70us, bit(1)
-  for (byte byte_idx = 0; byte_idx < 5; byte_idx ++) {
+  for (byte byte_idx = 0; byte_idx < sizeof(RawReading); byte_idx ++) {
     ptr = (byte*)reading + byte_idx;
     *ptr = 0;
     for (signed char bit_idx = 7; bit_idx >= 0; bit_idx --) {

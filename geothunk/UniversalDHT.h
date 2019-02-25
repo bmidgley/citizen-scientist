@@ -47,6 +47,9 @@ struct DHTResponse {
   unsigned char time;
 };
 
+/**
+ * Struct which encodes the protocol for the data sent by the DHT sensor
+ */
 struct RawReading {
   byte humidity16;
   byte humidity8;
@@ -54,6 +57,7 @@ struct RawReading {
   byte temperature8;
   byte checksum;
 };
+
 
 class UniversalDHT {
  private:
