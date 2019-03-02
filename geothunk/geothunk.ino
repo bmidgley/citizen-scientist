@@ -391,6 +391,7 @@ int timeInState(int pin, int state, int timeout) {
   int start = millis();
   int now = start;
   while ((digitalRead(pin) == state) && ((now - start) < timeout)) {
+    yield(); // appease the watchdog
     now = millis();
   }
   return now - start;
@@ -427,7 +428,7 @@ void setup() {
     presentation.paintConnectingWifi();
     while (WiFi.status() != WL_CONNECTED) {
       yield(); // prevent watchdog from restarting controller
-      if (timeInState(FLASH_BUTTON_PIN, LOW, 1000) >= 1000) {
+      if (timeInState(FLASH_BUTTON_PIN, LOW, 15000) >= 1000) {
         Serial.println("Resetting WiFi credentials to put back in config mode");
         WiFi.disconnect();
         delay(500);
