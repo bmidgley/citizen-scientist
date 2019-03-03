@@ -32,20 +32,6 @@
 
 #include "UniversalDHT.h"
 
-DHTResponse parseDHT(short* ptemperature, short* phumidity, RawReading* reading) {
-  DHTResponse ret = {success, 0};
-
-  byte expect = reading->humidity16 + reading->humidity8 + reading->temperature16 + reading->temperature8;
-  if (reading->checksum != expect) {
-    ret.error = errDataChecksum;
-    return ret;
-  }
-
-  *ptemperature = reading->temperature16 << 8 | reading->temperature8;
-  *phumidity = reading->humidity16 << 8 | reading->humidity8;
-  return ret;
-}
-
 UniversalDHT::UniversalDHT(int pin) {
   this->pin = pin;
 }
@@ -64,8 +50,8 @@ bool waitWhileValue(int pin, byte value) {
   return true;
 }
 
-DHTResponse parseDHT11(short rawTemperature, short rawHumidity, float* ptemperature, float* phumidity) {
-  DHTResponse ret = {success, 0};
+UniversalDHT::Response parseDHT11(short rawTemperature, short rawHumidity, float* ptemperature, float* phumidity) {
+  UniversalDHT::Response ret = {UniversalDHT::Response::success, 0};
 
   if (ptemperature) {
     *ptemperature = (float)(rawTemperature>>8);
@@ -76,8 +62,8 @@ DHTResponse parseDHT11(short rawTemperature, short rawHumidity, float* ptemperat
   return ret;
 }
 
-DHTResponse parseDHT22(short rawTemperature, short rawHumidity, float* ptemperature, float* phumidity) {
-  DHTResponse ret = {success, 0};
+UniversalDHT::Response parseDHT22(short rawTemperature, short rawHumidity, float* ptemperature, float* phumidity) {
+  UniversalDHT::Response ret = {UniversalDHT::Response::success, 0};
 
   if (ptemperature) {
     *ptemperature = (float)((rawTemperature & 0x8000 ? -1 : 1) * (rawTemperature & 0x7FFF)) / 10.0;
@@ -89,21 +75,25 @@ DHTResponse parseDHT22(short rawTemperature, short rawHumidity, float* ptemperat
   return ret;
 }
 
-DHTResponse UniversalDHT::read(float* ptemperature, float* phumidity) {
+UniversalDHT::Response UniversalDHT::read(float* ptemperature, float* phumidity) {
   RawReading reading;
-  DHTResponse ret = sample(&reading);
+  Response ret = sample(&reading);
   if (ret.error) return ret;
 
-  short rawHumidity;
-  short rawTemperature;
 
-  ret = parseDHT(&rawHumidity, &rawTemperature, &reading);
-  if (ret.error) return ret;
+  byte expect = reading.humidity16 + reading.humidity8 + reading.temperature16 + reading.temperature8;
+  if (reading.checksum != expect) {
+    ret.error = UniversalDHT::Response::errDataChecksum;
+    return ret;
+  }
+
+  short rawHumidity = ((short)reading.humidity16 << 8) | reading.humidity8;;
+  short rawTemperature = ((short)reading.temperature16 << 8) | reading.temperature8;;
 
   /**
    * DHT11 min humidity sensitivity is 20 and is reported as 20, 0
    * DHT22 max humidity is 100 and is reported as 3, 232
-   * A value of 4, x or greater can be safely assumed as a DHT11 reading
+   * A value of 4, x or greater can be safely assumed as a DHT11 reading (it would be 102.4% humidity interpretted as DHT22)
    */
   if (reading.humidity16 > 4)
     return parseDHT11(rawHumidity, rawTemperature, ptemperature, phumidity);
@@ -118,9 +108,9 @@ inline int advance(long &last_frame, long &next_frame) {
   return next_frame - last_frame;
 }
 
-DHTResponse UniversalDHT::sample(RawReading *reading) {
+UniversalDHT::Response UniversalDHT::sample(RawReading *reading) {
   long lf, nf = 0;
-  DHTResponse ret = {success, 0};
+  Response ret = {Response::success, 0};
 
   // https://www.sparkfun.com/datasheets/Sensors/Temperature/DHT22.pdf
   pinMode(pin, OUTPUT);
@@ -144,7 +134,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
   int t = advance(lf, nf);
   if (t < 30) {                    // specs [2]: 80us
     ret.time = t;
-    ret.error = errStartLow;
+    ret.error = Response::errStartLow;
     return ret;
   }
 
@@ -152,7 +142,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
   t = advance(lf, nf);
   if (t < 50) {                    // specs [2]: 80us
     ret.time = t;
-    ret.error = errStartHigh;
+    ret.error = Response::errStartHigh;
     return ret;
   }
 
@@ -171,7 +161,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
       t = advance(lf, nf);
       if (t < 24) {                    // specs says: 50us
         ret.time = t;
-        ret.error = errDataLow;
+        ret.error = Response::errDataLow;
         return ret;
       }
 
@@ -180,7 +170,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
       t = advance(lf, nf);
       if (t < 11) {                     // specs say: 26-28us
         ret.time = t;
-        ret.error = errDataRead;
+        ret.error = Response::errDataRead;
         return ret;
       }
 
@@ -194,7 +184,7 @@ DHTResponse UniversalDHT::sample(RawReading *reading) {
   t = advance(lf, nf);
   if (t < 24) {                           // specs say: 50us
     ret.time = t;
-    ret.error = errDataEOF;
+    ret.error = Response::errDataEOF;
   }
 
   return ret;

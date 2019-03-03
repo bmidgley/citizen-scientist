@@ -29,43 +29,43 @@
 
 #define VALUE_TIMEOUT 10000 // 10ms
 
-enum UniversalDHTResult: unsigned char
-{
-  success = 0, // Success.
-    errStartLow = 1, // Low signal came faster than expected
-    errStartHigh = 2, //
-    errDataLow = 3, //
-    errDataRead = 4, //
-    errDataEOF = 5, //
-    errDataChecksum = 6 // Checksum for read data didn't match
-    };
-
-
-
-struct DHTResponse {
-  UniversalDHTResult error;
-  unsigned char time;
-};
-
-/**
- * Struct which encodes the protocol for the data sent by the DHT sensor
- */
-struct RawReading {
-  byte humidity16;
-  byte humidity8;
-  byte temperature16;
-  byte temperature8;
-  byte checksum;
-};
-
 
 class UniversalDHT {
- private:
+
+public:
+  struct Response {
+    enum Error: unsigned char
+      {
+       success = 0, // Success.
+       errStartLow = 1, // Low signal came faster than expected
+       errStartHigh = 2, //
+       errDataLow = 3, //
+       errDataRead = 4, //
+       errDataEOF = 5, //
+       errDataChecksum = 6 // Checksum for read data didn't match
+      };
+
+    Error error;
+    unsigned char time;
+  };
+
+  /**
+   * Struct which encodes the protocol for the data sent by the DHT sensor
+   */
+  struct RawReading {
+    byte humidity16;
+    byte humidity8;
+    byte temperature16;
+    byte temperature8;
+    byte checksum;
+  };
+
+private:
   int pin;
-  DHTResponse sample(RawReading *reading);
- public:
+  Response sample(RawReading *reading);
+public:
   UniversalDHT(int pin);
-  DHTResponse read(float* temperature, float* humidity);
+  Response read(float* temperature, float* humidity);
 };
 
 #endif

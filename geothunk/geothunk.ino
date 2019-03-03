@@ -231,7 +231,7 @@ void handleGPS() {
 
 void measureDHT() {
   float temperature, humidity = 0;
-  DHTResponse response = dht.read(&temperature, &humidity);
+  UniversalDHT::Response response = dht.read(&temperature, &humidity);
 #ifdef DEBUG
   if(response.error) {
     Serial.printf("Read DHTxx failed t=%d err=%d\n", response.time, response.error);
