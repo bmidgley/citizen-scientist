@@ -50,7 +50,7 @@ SimpleDHT11 dht(pinDHT);
 // mv ESP8266TrueRandom-master ~/Arduino/libraries/
 
 #define DEFAULT_MDNS_NAME "geothunk"
-#define TRIGGER_PIN 0
+#define FLASH_BUTTON_PIN 0 // note, this is shared with D3!
 #define LED_PIN D4
 #define PULSE_PIN D8
 
@@ -74,7 +74,6 @@ char mdns_name[40] = DEFAULT_MDNS_NAME;
 
 char particle_topic_name[128];
 char error_topic_name[128];
-char ap_name[64] = "";
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
@@ -258,37 +257,7 @@ void measureDHT() {
   presentation.recordGraphTemperature();
 }
 
-void setup_apStartedCallback(WiFiManager* wifiManager) {
-  presentation.paintServingAp(String(ap_name));
-}
-
-void setup() {
-  WiFiManager wifiManager;
-  byte uuidNumber[16];
-  byte uuidCode[16];
-
-  airData.pmStatus = AirData_Uninitialized;
-  airData.tempHumidityStatus = AirData_Uninitialized;
-
-  Serial.begin(9600);
-  Serial.println("\n Starting");
-  pinMode(TRIGGER_PIN, INPUT);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(PULSE_PIN, OUTPUT);
-  tone(PULSE_PIN, 40);
-  WiFi.printDiag(Serial);
-  myservo.attach(D0);
-
-  display.init();
-#ifndef SPI_DISPLAY
-  display.flipScreenVertically();
-#endif
-  display.setContrast(255);
-  display.clear();
-
-  ESP8266TrueRandom.uuid(uuidCode);
-  ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
-
+boolean loadConfig() {
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/config.json")) {
@@ -314,6 +283,7 @@ void setup() {
           if (json.is<char*>("gps_port")) strncpy(gps_port, json["gps_port"].as<char*>(), sizeof(gps_port));
           if (json.is<char*>("ota_password")) strncpy(ota_password, json["ota_password"].as<char*>(), sizeof(ota_password));
           if (json.is<char*>("uuid")) strncpy(uuid, json["uuid"].as<char*>(), sizeof(uuid));
+          return true;
         } else {
           Serial.println("failed to load json config");
         }
@@ -322,8 +292,17 @@ void setup() {
   } else {
     Serial.println("failed to mount FS");
   }
+  return false;
+}
 
-  Serial.println("\nloaded config");
+void configureAP() {
+  char ap_name[64] = "";
+  byte uuidNumber[16];
+  byte uuidCode[16];
+  WiFiManager wifiManager;
+
+  ESP8266TrueRandom.uuid(uuidCode);
+  ESP8266TrueRandom.uuidToString(uuidCode).toCharArray(ota_password, 7);
 
   WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, sizeof(mqtt_server));
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, sizeof(mqtt_port));
@@ -350,64 +329,124 @@ void setup() {
   }
 
   snprintf(ap_name, sizeof(ap_name), "Geothunk-%d", ESP8266TrueRandom.random(100, 1000));
-  Serial.printf("autoconnect with AP name %s\n", ap_name);
-
-#ifndef NO_AUTO_SWAP
-  Serial.swap();
-#endif
+  Serial.printf("Configure by connecting to AP %s\n", ap_name);
 
   wifiManager.setTimeout(600);
-  wifiManager.setAPCallback(setup_apStartedCallback);
-
-  presentation.paintConnectingWifi();
+  wifiManager.setBreakAfterConfig(true);
+  presentation.paintServingAp(String(ap_name));
 
   digitalWrite(LED_PIN, LOW);
-  do {
-    if ( digitalRead(TRIGGER_PIN) == LOW ) {
-      WiFi.disconnect(true);
+  boolean connected = false;
+
+  while (!connected) {
+    connected = wifiManager.startConfigPortal(ap_name);
+    Serial.println("stored wifi connected");
+    WiFi.setAutoConnect(true);
+
+    strcpy(mqtt_server, custom_mqtt_server.getValue());
+    strcpy(mqtt_port, custom_mqtt_port.getValue());
+    strncpy(mdns_name, custom_mdns_name.getValue(), sizeof(mdns_name));
+    strcpy(gps_port, custom_gps_port.getValue());
+
+    if (shouldSaveConfig) {
+      shouldSaveConfig = false;
+      Serial.println("saving config");
+      DynamicJsonBuffer jsonBuffer;
+      JsonObject& json = jsonBuffer.createObject();
+      json["mqtt_server"] = mqtt_server;
+      json["mqtt_port"] = mqtt_port;
+      json["mdns_name"] = mdns_name;
+      json["gps_port"] = gps_port;
+      json["ota_password"] = ota_password;
+      json["uuid"] = uuid;
+
+      File configFile = SPIFFS.open("/config.json", "w");
+      if (!configFile) {
+        Serial.println("failed to open config file for writing");
+      }
+
+      json.printTo(Serial);
+      Serial.println("");
+      json.printTo(configFile);
+      configFile.close();
+      if (WiFi.status() != WL_CONNECTED) {
+        /* WiFi manager on NodeMCU seems to always fail to connect to the network after successful configuration, no matter how
+         * long you wait. It should connect after a reboot resolves.
+         */
+        ESP.restart();
+      }
     }
 
     measureDHT();
 
-  } while (!wifiManager.autoConnect(ap_name));
+  };
 
-  Serial.println("stored wifi connected");
   digitalWrite(LED_PIN, HIGH);
+}
 
-  WiFi.setAutoConnect(true);
+int timeInState(int pin, int state, int timeout) {
+  if (digitalRead(pin) != state)
+    return 0;
 
-  strcpy(mqtt_server, custom_mqtt_server.getValue());
-  strcpy(mqtt_port, custom_mqtt_port.getValue());
-  strncpy(mdns_name, custom_mdns_name.getValue(), sizeof(mdns_name));
-  strcpy(gps_port, custom_gps_port.getValue());
+  int start = millis();
+  int now = start;
+  while ((digitalRead(pin) == state) && ((now - start) < timeout)) {
+    yield(); // appease the watchdog
+    now = millis();
+  }
+  return now - start;
+}
 
-  if (shouldSaveConfig) {
-    Serial.println("saving config");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["mqtt_server"] = mqtt_server;
-    json["mqtt_port"] = mqtt_port;
-    json["mdns_name"] = mdns_name;
-    json["gps_port"] = gps_port;
-    json["ota_password"] = ota_password;
-    json["uuid"] = uuid;
+void setup() {
+  airData.pmStatus = AirData_Uninitialized;
+  airData.tempHumidityStatus = AirData_Uninitialized;
 
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      Serial.println("failed to open config file for writing");
+  Serial.begin(9600);
+  Serial.println("\n Starting");
+  pinMode(FLASH_BUTTON_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(PULSE_PIN, OUTPUT);
+  tone(PULSE_PIN, 40);
+  WiFi.printDiag(Serial);
+  myservo.attach(D0);
+
+  display.init();
+#ifndef SPI_DISPLAY
+  display.flipScreenVertically();
+#endif
+  display.setContrast(255);
+  display.clear();
+
+
+  boolean configWasLoaded = loadConfig();
+
+  if (configWasLoaded && ((WiFi.SSID() != NULL) && (WiFi.SSID().length() > 0))) {
+    Serial.print("Reconnecting to last saved access point, ");
+    Serial.println(WiFi.SSID());
+    //trying to fix connection in progress hanging
+    WiFi.begin();
+    presentation.paintConnectingWifi();
+    while (WiFi.status() != WL_CONNECTED) {
+      yield(); // prevent watchdog from restarting controller
+      if (timeInState(FLASH_BUTTON_PIN, LOW, 15000) >= 1000) {
+        Serial.println("Resetting WiFi credentials to put back in config mode");
+        WiFi.disconnect();
+        delay(500);
+        ESP.restart();
+      };
     }
-
-    json.printTo(Serial);
-    Serial.println("");
-    json.printTo(configFile);
-    configFile.close();
+    digitalWrite(LED_PIN, HIGH);
+  } else {
+    configureAP();
   }
 
   presentation.paintConnectingMqtt(millis());
 
-  client = new PubSubClient(*(new WiFiClient()));
-  client->setServer(mqtt_server, strtoul(mqtt_port, NULL, 10));
+  int mqtt_port_int = strtoul(mqtt_port, NULL, 10);
+  Serial.printf("Connecting to mqtt on %s, port %i\n", mqtt_server, mqtt_port_int);
+  client = new PubSubClient(mqtt_server, mqtt_port_int, *(new WiFiClient()));
   client->setCallback(mqttCallback);
+  mqttConnect();
 
   for (int i = 0; i < 300; i++) {
     linea[i] = ' ';
@@ -459,6 +498,11 @@ void setup() {
   webServer->begin();
 
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+#ifndef NO_AUTO_SWAP
+  Serial.swap();
+#endif
+
 }
 
 void pmsSensorLoop(long now) {
