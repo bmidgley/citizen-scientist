@@ -18,7 +18,6 @@ Libraries: sketch->include library->manage libraries
 * WiFiManager (0.14.x)
 * ArduinoJson (5.x.x)
 * PubSubClient (2.x.x)
-* SimpleDHT  (1.x.x)
 * "ESP8266 and ESP32 Oled Driver for SSD1306 display" (4.x.x)
 * Esp8266TrueRandom (wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip; sketch->include library->Add .zip Library)
 

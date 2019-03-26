@@ -26,21 +26,17 @@
 #include <ESP8266httpUpdate.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
-#include <SimpleDHT.h>
 #include <Servo.h>
 #include "PmsSensorReader.h"
 #include "Presentation.h"
+#include "UniversalDHT.h"
 
 int pinDHT = D3;
-#ifdef DHT22
-SimpleDHT22 dht(pinDHT);
-#else
-SimpleDHT11 dht(pinDHT);
-#endif
+UniversalDHT dht(pinDHT);
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
-// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, SimpleDHT, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
+// WiFiManager, ArduinoJson, PubSubClient, ArduinoOTA, "ESP8266 and ESP32 Oled Driver for SSD1306 display"
 // wget https://github.com/marvinroger/ESP8266TrueRandom/archive/master.zip
 // sketch->include library->Add .zip Library
 // or... manually...
@@ -233,13 +229,11 @@ void handleGPS() {
 }
 
 void measureDHT() {
-  int err = SimpleDHTErrSuccess;
-
   float temperature, humidity = 0;
-  err = dht.read2(&temperature, &humidity, NULL);
+  UniversalDHT::Response response = dht.read(&temperature, &humidity);
 #ifdef DEBUG
-  if(err != SimpleDHTErrSuccess) {
-    Serial.printf("Read DHTxx failed t=%d err=%02x\n", err >> 8, err & 0xff);
+  if(response.error) {
+    Serial.printf("Read DHTxx failed t=%d err=%d\n", response.time, response.error);
   } else {
     Serial.print("Sample OK: ");
     Serial.print((float)temperature); Serial.print(" *C, ");
@@ -247,7 +241,7 @@ void measureDHT() {
     Serial.println();
   }
 #endif
-  if (err == SimpleDHTErrSuccess) {
+  if (!response.error) {
     lastDHTReading = millis();
     airData.humidity = humidity;
     airData.temperature = temperature;
