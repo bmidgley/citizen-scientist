@@ -55,11 +55,11 @@ SimpleDHT11 dht(pinDHT);
 #define PULSE_PIN D8
 
 bool shouldSaveConfig = false;
-long lastSample = 0;
-long lastReport = 0;
-long lastPmReading = 0;
-long lastDHTReading = 0;
-long lastSwap = 0;
+unsigned long lastSample = 0;
+unsigned long lastReport = 0;
+unsigned long lastPmReading = 0;
+unsigned long lastDHTReading = 0;
+unsigned long lastSwap = 0;
 long nextFrame = 0; // Time at which the next frame should be drawn
 char msg[200] = "";
 char errorMsg[200] = "";
@@ -218,7 +218,7 @@ int handle_gps_byte(char byteGPS) {
   }
 }
 
-bool pmOverdue(long now) {
+bool pmOverdue(unsigned long now) {
   return (now - lastPmReading) > reportExpectedDurationMs;
 }
 
@@ -388,8 +388,8 @@ int timeInState(int pin, int state, int timeout) {
   if (digitalRead(pin) != state)
     return 0;
 
-  int start = millis();
-  int now = start;
+  unsigned long start = millis();
+  unsigned long now = start;
   while ((digitalRead(pin) == state) && ((now - start) < timeout)) {
     yield(); // appease the watchdog
     now = millis();
