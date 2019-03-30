@@ -1,4 +1,4 @@
-#define VERSION "1.23"
+#define VERSION "1.24"
 
 enum AirDataStatus {AirData_Uninitialized = 0, AirData_Ok = 1, AirData_Stale = 2};
 

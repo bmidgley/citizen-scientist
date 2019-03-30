@@ -96,9 +96,9 @@ UniversalDHT::Response UniversalDHT::read(float* ptemperature, float* phumidity)
    * A value of 4, x or greater can be safely assumed as a DHT11 reading (it would be 102.4% humidity interpretted as DHT22)
    */
   if (reading.humidity16 > 4)
-    return parseDHT11(rawHumidity, rawTemperature, ptemperature, phumidity);
+    return parseDHT11(rawTemperature, rawHumidity, ptemperature, phumidity);
   else
-    return parseDHT22(rawHumidity, rawTemperature, ptemperature, phumidity);
+    return parseDHT22(rawTemperature, rawHumidity, ptemperature, phumidity);
 }
 
 
