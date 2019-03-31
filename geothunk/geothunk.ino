@@ -73,7 +73,6 @@ char error_topic_name[128];
 
 int sampleGap = 4 * 1000;
 int reportGap = 60 * 1000;
-int reportExpectedDurationMs = sampleGap * 5;
 int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[] = "$GPRMC";
@@ -215,11 +214,11 @@ int handle_gps_byte(char byteGPS) {
 }
 
 bool pmOverdue(unsigned long now) {
-  return (now - lastPmReading) > reportExpectedDurationMs;
+  return (now - lastPmReading) > reportGap;
 }
 
 bool dhtOverdue(long now) {
-  return (now - lastDHTReading) > reportExpectedDurationMs;
+  return (now - lastDHTReading) > reportGap;
 }
 
 
