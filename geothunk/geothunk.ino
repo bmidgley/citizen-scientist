@@ -584,8 +584,13 @@ void loop() {
   if (now - lastReport > reportGap && mqttConnect()) {
     lastReport = now;
 
-    if(!client->publish(particle_topic_name, msg))
-      Serial.printf("failed to send %s", msg);
+    if (client->beginPublish(particle_topic_name, strlen(msg), false)) {
+      client->write((uint8_t *)msg, strlen(msg));
+      client->endPublish();
+    } else {
+      Serial.printf("failed to send %s\n", msg);
+    }
+
     if (*errorMsg) {
       client->publish(error_topic_name, errorMsg);
       *errorMsg = '\0';
