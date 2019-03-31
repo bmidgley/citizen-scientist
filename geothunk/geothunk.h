@@ -10,6 +10,8 @@ struct AirData {
 
   float temperature;
   float humidity;
+  float gas_resistance;
+  float pressure;
 
   enum AirDataStatus tempHumidityStatus;
 };

@@ -29,10 +29,14 @@
 #include <Servo.h>
 #include "PmsSensorReader.h"
 #include "Presentation.h"
-#include "UniversalDHT.h"
+// #include "UniversalDHT.h"
+#include <Wire.h>
+#include "Adafruit_BME680.h"
 
-int pinDHT = D3;
-UniversalDHT dht(pinDHT);
+// int pinDHT = D3;
+// UniversalDHT dht(pinDHT);
+Adafruit_BME680 bme;
+#define SEALEVELPRESSURE_HPA (1013.25)
 
 // use arduino library manager to get libraries
 // sketch->include library->manage libraries
@@ -50,6 +54,13 @@ UniversalDHT dht(pinDHT);
 #define LED_PIN D4
 #define PULSE_PIN D8
 
+struct Config {
+  float tempOffset = 0;
+  float tempScale = 1.0;
+  float humidityOffset = 0;
+  float humidityScale = 1.0;
+};
+Config config;
 bool shouldSaveConfig = false;
 unsigned long lastSample = 0;
 unsigned long lastReport = 0;
@@ -71,8 +82,9 @@ char mdns_name[40] = DEFAULT_MDNS_NAME;
 char particle_topic_name[128];
 char error_topic_name[128];
 
-int sampleGap = 4 * 1000;
-int reportGap = 60 * 1000;
+int sampleGap = 10 * 1000;
+int reportGap = 30 * 1000;
+int reportExpectedDurationMs = reportGap;
 int byteGPS = -1;
 char linea[300] = "";
 char comandoGPR[] = "$GPRMC";
@@ -227,27 +239,46 @@ void handleGPS() {
   if (tcpClient->connected() && tcpClient->available()) handle_gps_byte(tcpClient->read());
 }
 
-void measureDHT() {
-  float temperature, humidity = 0;
-  UniversalDHT::Response response = dht.read(&temperature, &humidity);
-#ifdef DEBUG
-  if(response.error) {
-    Serial.printf("Read DHTxx failed t=%d err=%d\n", response.time, response.error);
-  } else {
-    Serial.print("Sample OK: ");
-    Serial.print((float)temperature); Serial.print(" *C, ");
-    Serial.print((float)humidity); Serial.println(" RH%");
-    Serial.println();
-  }
-#endif
-  if (!response.error) {
-    lastDHTReading = millis();
-    airData.humidity = humidity;
-    airData.temperature = temperature;
-    airData.tempHumidityStatus = AirData_Ok;
+void initBME680() {
+  while (!bme.begin()) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+    delay(2000);
   }
 
-  presentation.recordGraphTemperature();
+  // Set up oversampling and filter initialization
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150); // 320*C for 150 ms
+}
+
+void measureDHT() {
+  if (! bme.performReading()) {
+#ifdef DEBUG
+    Serial.println("Failed to perform reading :(");
+#endif
+    return;
+  }
+
+  float atmospheric = bme.pressure / 100.0F;
+  float altitude =  44330.0 * (1.0 - pow(atmospheric / SEALEVELPRESSURE_HPA, 0.1903));
+
+#ifdef DEBUG
+  Serial.printf("Temperature = %0.02f (calib %0.02f) *C\n", bme.temperature, bme.temperature * config.tempScale + config.tempOffset);
+  Serial.printf("Humidity = %0.02f (calib %0.02f) %%\n", bme.humidity, bme.humidity * config.humidityScale + config.humidityOffset);
+  Serial.printf("Pressure = %0.02f hPa\n", bme.pressure / 100.0);
+  Serial.printf("Gas = %0.4f KOhms\n", bme.gas_resistance / 1000.0);
+
+  Serial.printf("Approx. Altitude = %0.1f\n", altitude);
+#endif
+
+  airData.temperature = bme.temperature * config.tempScale + config.tempOffset;
+  airData.humidity = bme.humidity * config.humidityScale + config.humidityOffset;
+  airData.pressure = bme.pressure / 100.0;
+  airData.gas_resistance = bme.gas_resistance / 1000.0;
+
+  lastDHTReading = millis();
 }
 
 boolean loadConfig() {
@@ -404,11 +435,14 @@ void setup() {
   myservo.attach(D0);
 
   display.init();
-#ifndef SPI_DISPLAY
   display.flipScreenVertically();
+#ifndef SPI_DISPLAY
 #endif
   display.setContrast(255);
   display.clear();
+
+  // do this after the display since display initializes wire
+  initBME680();
 
 
   boolean configWasLoaded = loadConfig();
@@ -562,8 +596,9 @@ void loop() {
     if (!tcpClient->connected() && atoi(gps_port) > 0) tcpClient->connect(WiFi.gatewayIP(), atoi(gps_port));
 
     long earlierLastReading = lastPmReading < lastDHTReading ? lastPmReading : lastDHTReading;
-    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%0.1f,\"h\":%0.1f}",
-             pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000, airData.temperature, airData.humidity);
+    snprintf(msg, sizeof(msg), "{\"pm2\":%u,\"pm1\":%u,\"pm10\":%u,\"l\":%s%d.%d,\"n\":%s%d.%d,\"u\":%u,\"t\":%0.1f,\"h\":%0.1f,\"p\":%0.2f,\"g\":%0.4f}",
+             pmsSensor.pm2_5, pmsSensor.pm1, pmsSensor.pm10, lats > 0 ? "" : "-", latw, latf, lngs > 0 ? "" : "-", lngw, lngf, earlierLastReading / 60000,
+             airData.temperature, airData.humidity, airData.pressure, airData.gas_resistance);
 
     *errorMsg = 0;
     if (lastSample - lastPmReading > 30000) {

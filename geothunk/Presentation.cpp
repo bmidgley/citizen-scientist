@@ -119,6 +119,8 @@ void Presentation::paintDisplay(long now) {
 
   String pmValues = String("1/2/10=");
   String humidityString;
+  String gasString;
+  String pressureString;
   String temperatureString;
 
   if (airData->pmStatus == AirData_Stale)
@@ -131,34 +133,51 @@ void Presentation::paintDisplay(long now) {
   if (airData->tempHumidityStatus == AirData_Stale) {
     humidityString = String("E");
     temperatureString = String("E");
+    gasString = String("E");
+    pressureString = String("E");
   } else if (airData->tempHumidityStatus == AirData_Uninitialized) {
     humidityString = String("-");
     temperatureString = String("-");
+    gasString = String("-");
+    pressureString = String("-");
   } else {
     char format_buffer[10];
     snprintf(format_buffer, sizeof(format_buffer), "%0.0f", airData->humidity);
     humidityString = String(format_buffer);
     snprintf(format_buffer, sizeof(format_buffer), "%0.1f", airData->temperature);
     temperatureString = String(format_buffer);
+    snprintf(format_buffer, sizeof(format_buffer), "%0.1f", airData->gas_resistance);
+    gasString = String(format_buffer);
+    snprintf(format_buffer, sizeof(format_buffer), "%0.2f", airData->pressure);
+    pressureString = String(format_buffer);
   }
   display->drawString(display->getWidth(), 34, pmValues);
   display->drawString(display->getWidth(), 44, humidityString + String("%h"));
   display->drawString(display->getWidth(), 54, temperatureString + String("°C"));
 
   display->setTextAlignment(TEXT_ALIGN_LEFT);
-  if (hours < 24)
-    uptime = String(hours) + String("h");
-  else if(days < 30)
-    uptime = String(days) + String("d");
-  else
-    uptime = String(days/30) + String("m");
-  display->drawString(0, 34, uptime + String(" v") + String(VERSION));
-  display->drawString(0, display->getHeight() - 20, String(WiFi.SSID()));
-  if (WiFi.status() == WL_CONNECTED) {
-    display->drawString(0, display->getHeight() - 10, WiFi.localIP().toString());
-  } else {
-    display->drawString(0, display->getHeight() - 10, "No wifi connection");
+  display->drawString(0, 44, gasString + String(" kOhm"));
+  display->drawString(0, 54, pressureString + String(" hPa"));
+
+  int sequence = (now / 2000) % 3;
+  if (sequence == 0) {
+    if (hours < 24)
+      uptime = String(hours) + String("h");
+    else if(days < 30)
+      uptime = String(days) + String("d");
+    else
+      uptime = String(days/30) + String("m");
+    display->drawString(0, 34, uptime + String(" v") + String(VERSION));
+  } else if (sequence == 1) {
+    display->drawString(0, 34, String(WiFi.SSID()));
+  } else if (sequence == 2) {
+    if (WiFi.status() == WL_CONNECTED) {
+      display->drawString(0, 34, WiFi.localIP().toString());
+    } else {
+      display->drawString(0, 34, "No wifi connection");
+    }
   }
+
   if(airData->pmStatus != AirData_Uninitialized) {
     display->setColor(INVERSE);
     this->graphSet(graph, POINTS, 36, 12, gindex);
