@@ -586,4 +586,9 @@ void loop() {
       *errorMsg = '\0';
     }
   }
+
+  // restart once per day
+  if (now > 1000 * 60 * 60 * 24) {
+    ESP.restart();
+  }
 }
