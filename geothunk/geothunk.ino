@@ -52,7 +52,7 @@ Adafruit_BME680 bme;
 #define DEFAULT_MDNS_NAME "geothunk"
 #define FLASH_BUTTON_PIN 0 // note, this is shared with D3!
 #define LED_PIN D4
-#define PULSE_PIN D8
+// #define PULSE_PIN D8
 
 struct Config {
   float tempOffset = 0;
@@ -110,7 +110,7 @@ SSD1306Spi display(D8, D1, D2); // rst n/c, dc D1, cs D2, clk D5, mosi/di/si D7
 #ifdef SH1106_DISPLAY
 SH1106 display(0x3c, D1, D2);
 #else
-SSD1306 display(0x3c, 5, 4);
+SSD1306 display(0x3c, D1, D2);
 #endif
 #endif
 
@@ -429,8 +429,8 @@ void setup() {
   Serial.println("\n Starting");
   pinMode(FLASH_BUTTON_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(PULSE_PIN, OUTPUT);
-  tone(PULSE_PIN, 40);
+  // pinMode(PULSE_PIN, OUTPUT);
+  // tone(PULSE_PIN, 40);
   WiFi.printDiag(Serial);
   myservo.attach(D0);
 
